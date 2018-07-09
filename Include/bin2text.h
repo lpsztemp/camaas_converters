@@ -17,9 +17,9 @@ void bin2text(const DomainString& strDomain, std::istream& is, std::ostream& os)
 {
 	using namespace Implementation;
 	if (strDomain == "arch_ac")
-		return bin2text_arch_ac(is, os);
+		bin2text_arch_ac(is, os);
 	else if (strDomain == "radio_hf")
-		return bin2text_radio_hf(is, os);
+		bin2text_radio_hf(is, os);
 	else
 		throw std::invalid_argument("Invalid domain name");
 }

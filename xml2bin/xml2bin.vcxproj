@@ -140,6 +140,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\bin2text.h" />
+    <ClInclude Include="..\Include\impl_arch_ac_domain_xml2bin.h" />
+    <ClInclude Include="..\Include\impl_radio_hf_domain_xml2bin.h" />
+    <ClInclude Include="..\Include\impl_xml_parser.h" />
+    <ClInclude Include="..\Include\xml2bin.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\xml2bin.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
