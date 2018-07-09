@@ -20,6 +20,22 @@ private:
 	}
 };
 
+struct invalid_xml_data:std::invalid_argument
+{
+	invalid_xml_data():std::invalid_argument("Invalid xml data") {}
+	invalid_xml_data(std::istream::pos_type pos):std::invalid_argument(form_what(pos)) {}
+	template <class WhatString>
+	invalid_xml_data(const WhatString& strWhat):std::invalid_argument(strWhat) {}
+
+public:
+	static std::string form_what(std::istream::pos_type pos)
+	{
+		std::ostringstream os;
+		os << "Invalid xml data at offset " << pos;
+		return os.str();
+	}
+};
+
 //conversion of domain_data:
 /*
 struct
@@ -57,20 +73,15 @@ template <class DomainName, class DomainConvert>
 static void convert_start(const DomainName& strDomain, std::istream& is, std::ostream& os, DomainConvert conv)
 {
 	using namespace std;
-	{
-		std::string strbuf;
-		is >> strbuf;
-		if (is.eof() || strbuf != "<?xml")
-			throw xml_invalid_syntax(is.tellg());
-		do
-		{
-			is >> strbuf;
-		}while(strbuf != "?>");
-		auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
-		if (it_is == istream_iterator<char>())
-			throw xml_invalid_syntax(is.tellg());
-	}
+	auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
+	if (it_is == istream_iterator<char>() || is.get() != '<')
+		throw xml_invalid_syntax(is.tellg());
 	auto tag = xml_tag(is);
+	if (!tag.m_fIsHeader)
+		throw invalid_xml_data("XML header is not specified");
+	if (tag.attribute("encoding") != "utf-8")
+		throw invalid_xml_data("XML encoding must be utf-8");
+	tag = xml_tag(is);
 	if (tag.name() != "model")
 		throw improper_xml_tag(tag.name());
 	auto strAttr = tag.attribute("cx");

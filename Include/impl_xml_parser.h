@@ -96,7 +96,7 @@ public:
 	//On input: "is" corresponds to the first symbol following the opening angle bracket '<'
 	//On output "is" corresponds to the first symbol following the closing angle bracket '>'
 	//If a comment is encountered, on output "is" is associated with the first symbol after the "-->" sequence
-	xml_tag(std::istream& is)
+	explicit xml_tag(std::istream& is)
 	{
 		char chCurrent = is.get();
 		if (chCurrent = '?')
@@ -106,8 +106,42 @@ public:
 			if (std::strcmp(buf, "xml") != 0 || is.eof() || !std::isspace(is.get(), is.getloc()))
 				throw xml_invalid_syntax(is.tellg());
 			chCurrent = skip_spaces(is);
+			if (is.eof())
+				throw xml_invalid_syntax(is.tellg());
 			while (true)
 			{
+				if (chCurrent == '?')
+				{
+					chCurrent = is.get();
+					if (is.eof() || chCurrent != '>')
+						throw xml_invalid_syntax(is.tellg());
+					m_fIsHeader = true;
+					return;
+				}
+				if (!std::isprint(chCurrent, is.getloc()))
+					throw xml_invalid_syntax(is.tellg());
+				std::string attribute, value;
+				std::tie(attribute, chCurrent) = get_rest(chCurrent, is);
+				if (is.eof() || attribute != "version" && attribute != "encoding")
+					throw xml_invalid_syntax(is.tellg());
+				if (std::isspace(chCurrent, is.getloc()))
+					chCurrent = skip_spaces(is);
+				if (chCurrent != '=')
+					throw xml_invalid_syntax(is.tellg());
+				chCurrent = skip_spaces(is);
+				if (is.eof())
+					throw xml_invalid_syntax(is.tellg());
+				if (chCurrent != '\"')
+					throw xml_invalid_syntax(is.tellg());
+				std::tie(chCurrent, value) = get_string_in_quotes(is);
+				if (std::isspace(chCurrent, is.getloc()))
+				{
+					chCurrent = skip_spaces(is);
+					if (is.eof())
+						throw xml_invalid_syntax(is.tellg());
+				}
+				if (!m_mpAttributes.emplace(attribute, value).second)
+					throw xml_attribute_already_specified(attribute, is.tellg);
 			}
 		}
 		if (xml::isspace(chCurrent))
