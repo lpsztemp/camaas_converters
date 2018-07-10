@@ -4,6 +4,7 @@
 #include <impl_xml_parser.h>
 #include <algorithm>
 #include <iterator>
+#include <functional>
 
 struct improper_xml_tag:std::invalid_argument
 {
@@ -103,6 +104,24 @@ static void convert_start(const DomainName& strDomain, std::istream& is, std::os
 		auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
 		if (it_is == istream_iterator<char>())
 			throw xml_invalid_syntax(is.tellg());
+		if (*it_is != '<')
+			throw invalid_xml_data(is.tellg());
+		tag = xml_tag(it);
+		if (tag.name() == "domain")
+		{
+			if (strDomain == tag.attribute("name"))
+				conv.model_domain_data(is, os);
+		}else if (tag.name() == "polyobject")
+		{
+		}else if (tag.name() == "sourceobject")
+		{
+		}else if (tag.name() =="plainobject")
+		{
+		}else if (tag.name() == "model" && tag.is_closing_tag())
+			break;
+		else
+			throw improper_xml_tag(is.tellg());
+
 
 	};
 

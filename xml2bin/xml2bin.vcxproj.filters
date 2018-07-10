@@ -32,6 +32,9 @@
     <ClInclude Include="..\Include\impl_xml_parser.h">
       <Filter>Header Files\Common\impl</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\impl_buf_ostream.h">
+      <Filter>Header Files\Common\impl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\xml2bin.cpp">
