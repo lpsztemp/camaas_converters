@@ -266,6 +266,10 @@ public:
 	{
 		return m_strTag;
 	}
+	inline bool is_header() const
+	{
+		return m_fIsHeader;
+	}
 	template <class AttributeName>
 	const std::string& attribute(const AttributeName& attr) const
 	{

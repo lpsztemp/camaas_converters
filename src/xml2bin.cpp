@@ -41,17 +41,6 @@ public:
 	}
 };
 
-//conversion of domain_data:
-/*
-struct
-{
-	void model_domain_data(is, os);
-	void poly_domain_data(is, os);
-	void face_domain_data(is, os);
-	void source_domain_data(is, os);
-	void plain_domain_data(is, os);
-};
-*/
 
 static void skip_domain_data(std::istream& is) //"is" is associated with the first character after the closing '>'
 {
@@ -72,6 +61,83 @@ static void skip_domain_data(std::istream& is) //"is" is associated with the fir
 		}
 		--level;
 	}while (level != 0);
+}
+
+//conversion of domain_data:
+/*
+struct
+{
+	void model_domain_data(is, os);
+	void poly_domain_data(is, os);
+	void face_domain_data(is, os);
+	void source_domain_data(is, os);
+	void plain_domain_data(is, os);
+};
+*/
+
+template <class T, class = void> struct has_model_domain_data:std::false_type {};
+template <class T> struct has_model_domain_data<T, std::void_t<decltype(std::declval<T>().model_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
+template <class T, class = void> struct has_poly_domain_data:std::false_type {};
+template <class T> struct has_poly_domain_data<T, std::void_t<decltype(std::declval<T>().poly_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
+template <class T, class = void> struct has_face_domain_data:std::false_type {};
+template <class T> struct has_face_domain_data<T, std::void_t<decltype(std::declval<T>().face_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
+template <class T, class = void> struct has_source_domain_data:std::false_type {};
+template <class T> struct has_source_domain_data<T, std::void_t<decltype(std::declval<T>().source_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
+template <class T, class = void> struct has_plain_domain_data:std::false_type {};
+template <class T> struct has_plain_domain_data<T, std::void_t<decltype(std::declval<T>().plain_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
+
+template <class Convert>
+auto convert_model_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_model_domain_data<Convert&>::value>
+{
+	return conv.model_domain_data(is, os);
+}
+template <class Convert>
+void convert_model_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_model_domain_data<Convert&>::value>
+{
+	skip_domain_data(is);
+}
+template <class Convert>
+auto convert_poly_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_poly_domain_data<Convert&>::value>
+{
+	return conv.poly_domain_data(is, os);
+}
+template <class Convert>
+void convert_poly_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_poly_domain_data<Convert&>::value>
+{
+	skip_domain_data(is);
+}
+
+template <class Convert>
+auto convert_face_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_face_domain_data<Convert&>::value>
+{
+	return conv.face_domain_data(is, os);
+}
+template <class Convert>
+void convert_face_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_face_domain_data<Convert&>::value>
+{
+	skip_domain_data(is);
+}
+
+template <class Convert>
+auto convert_source_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_source_domain_data<Convert&>::value>
+{
+	return conv.source_domain_data(is, os);
+}
+template <class Convert>
+void convert_source_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_source_domain_data<Convert&>::value>
+{
+	skip_domain_data(is);
+}
+
+template <class Convert>
+auto convert_plain_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_plain_domain_data<Convert&>::value>
+{
+	return conv.plain_domain_data(is, os);
+}
+template <class Convert>
+void convert_plain_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_plain_domain_data<Convert&>::value>
+{
+	skip_domain_data(is);
 }
 
 template <class DomainName, class DomainConvert>
@@ -104,14 +170,12 @@ static void convert_model(const xml_tag& rModelTag, const DomainName& strDomain,
 		{
 			if (strDomain == rModelTag.attribute("name"))
 			{
-				std::ofstream os_tmp(temp_path(), std::ios_base::binary | std::ios_base::out)
-				
+				std::ofstream os_tmp(temp_path(), std::ios_base::binary | std::ios_base::out);
 				os_tmp << std::uint32_t(strDomain.size());
 				os_tmp.write(strDomain.data(), strDomain.size());
 				buf_ostream os_tmp_2;
 				conv.model_domain_data(is, os_tmp);
 				os << std::uint32_t(os_tmp.size());
-
 			}
 		}else if (rModelTag.name() == "polyobject")
 		{
@@ -128,34 +192,56 @@ static void convert_model(const xml_tag& rModelTag, const DomainName& strDomain,
 	};
 }
 
-template <class DomainName, class DomainConvert>
-static void convert_start(const DomainName& strDomain, std::istream& is, std::ostream& os, DomainConvert conv)
+class conversion_state
 {
-	using namespace std;
-	auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
-	if (it_is == istream_iterator<char>() || is.get() != '<')
-		throw xml_invalid_syntax(is.tellg());
-	auto tag = xml_tag(is);
-	if (!tag.m_fIsHeader)
-		throw invalid_xml_data("XML header is not specified");
-	if (tag.attribute("encoding") != "utf-8")
-		throw invalid_xml_data("XML encoding must be utf-8");
-	tag = xml_tag(is);
-	if (tag.name() != "model")
-		throw improper_xml_tag(tag.name());
-	
+	std::string m_strDomain;
+	std::size_t m_cObjects = std::size_t();
+	std::ostream::pos_type m_cObjectsPos = std::ostream::pos_type(-1);
+	std::ostream* m_pOs = nullptr;
+	std::stack<std::istream*> m_prev;
+public:
+	template <class DomainName>
+	conversion_state(DomainName&& domain, std::ostream& os):m_strDomain(std::forward<DomainName>(domain)), m_pOs(std::addressof(os)) {}
+	conversion_state(const conversion_state&) = delete;
+	conversion_state& operator=(const conversion_state&) = delete;
 
-}
+	void next_xml(std::istream& is)
+	{
+		using namespace std;
+		auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
+		if (it_is == istream_iterator<char>() || is.get() != '<')
+			throw xml_invalid_syntax(is.tellg());
+		auto tag = xml_tag(is);
+		if (!tag.is_header())
+			throw invalid_xml_data("XML header is not specified");
+		if (tag.attribute("encoding") != "utf-8")
+			throw invalid_xml_data("XML encoding must be utf-8");
+		tag = xml_tag(is);
+		if (tag.name() != "model")
+			throw improper_xml_tag(tag.name());
+		//convert_model(tag, m_strDomain, is, *m_pOs, 0);
+
+	}
+	void next_hgt(std::istream& is);
+	inline bool is_model_specified() const
+	{
+		return m_cObjectsPos != std::ostream::pos_type(-1);
+	}
+	void finalize();
+};
 
 namespace Implementation
 {
-	void xml2bin_arch_ac(std::istream& is, std::ostream& os)
+	std::unique_ptr<void> xml2bin_set(const std::string& domain, std::ostream& os)
 	{
 	}
-	void xml2bin_radio_hf(std::istream& is, std::ostream& os)
+	void xml2bin_next_xml(const std::unique_ptr<void>& state, std::istream& is)
 	{
 	}
-	void hgt2bin_radio_hf(std::istream& is, std::ostream& os)
+	void xml2bin_next_hgt(const std::unique_ptr<void>& state, std::istream& is)
+	{
+	}
+	void xml2bin_finalize(const std::unique_ptr<void>& state)
 	{
 	}
 } //Implementation

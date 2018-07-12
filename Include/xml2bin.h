@@ -5,20 +5,18 @@
 #include <iterator>
 #include <type_traits>
 #include <memory>
+#include <fstream>
+#include <stack>
 
 #ifndef XML2BIN_H_
 #define XML2BIN_H_
 
 namespace Implementation
 {
-	struct conversion_state
-	{
-		std::size_t cObjects;
-		std::ostream::pos_type cObjectsPos;
-	};
-	void xml2bin_arch_ac(std::istream& is, std::ostream& os, std::size_t& cObjects);
-	void xml2bin_radio_hf(std::istream& is, std::ostream& os, std::size_t& cObjects);
-	void hgt2bin_radio_hf(std::istream& is, std::ostream& os, std::size_t& cObjects);
+	std::unique_ptr<void> xml2bin_set(const std::string& domain, std::ostream& os);
+	void xml2bin_next_xml(const std::unique_ptr<void>& state, std::istream& is);
+	void xml2bin_next_hgt(const std::unique_ptr<void>& state, std::istream& is);
+	void xml2bin_finalize(const std::unique_ptr<void>& state);
 
 	template <class T>
 	T& get_input_stream(const std::reference_wrapper<T>& ref)
@@ -42,18 +40,10 @@ auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, 
 	>
 {
 	using namespace Implementation;
-	auto cObjects = std::size_t();
-	if (strDomain == "arch_ac")
-	{
-		for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
-			xml2bin_arch_ac(get_input_stream(*it), os, cObjects);
-	}else if (strDomain == "radio_hf"))
-	{
-		for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
-			xml2bin_radio_hf(get_input_stream(*it), os, cObjects);
-	}
-	else
-		throw std::invalid_argument("Invalid domain name");
+	auto state = xml2bin_set(strDomain, os);
+	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
+		xml2bin_next_xml(state, get_input_stream(*it));
+	xml2bin_finalize(state);
 }
 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
@@ -63,15 +53,11 @@ auto hgtxml2bin(const DomainString& strDomain, std::istream& isHgt, InputIterato
 		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
 {
 	using namespace Implementation;
-	auto cObjects = std::size_t();
-	if (strDomain == "radio_hf")
-	{
-		for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
-			xml2bin_radio_hf(get_input_stream(*it), os);
-		hgt2bin_radio_hf(isHgt, os);
-	}
-	else
-		throw std::invalid_argument("Invalid domain name");
+	auto state = xml2bin_set(strDomain, os);
+	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
+		xml2bin_next_xml(state, get_input_stream(*it));
+	xml2bin_next_hgt(state, isHgt);
+	xml2bin_finalize(state);
 }
 
 #endif //BIN2TEXT_H_
