@@ -40,5 +40,8 @@
     <ClCompile Include="..\src\xml2bin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\impl_buf_ostream.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
