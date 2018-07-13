@@ -32,12 +32,27 @@ struct invalid_xml_data:std::invalid_argument
 	template <class WhatString>
 	invalid_xml_data(const WhatString& strWhat):std::invalid_argument(strWhat) {}
 
-public:
+private:
 	static std::string form_what(std::istream::pos_type pos)
 	{
 		std::ostringstream os;
 		os << "Invalid xml data at offset " << pos;
 		return os.str();
+	}
+};
+
+struct ambiguous_specification:std::invalid_argument
+{
+	ambiguous_specification():std::invalid_argument("Ambiguous model specification") {}
+	template <class TagName>
+	ambiguous_specification(const TagName& tag_name):std::invalid_argument(form_what(tag_name)) {}
+private:
+	template <class TagName>
+	static std::string form_what(const TagName& tag)
+	{
+		std::ostringstream ss;
+		ss << "Ambiguous \"" << tag << "\"";
+		return ss.str();
 	}
 };
 
@@ -141,7 +156,7 @@ void convert_plain_domain_data(Convert&, std::istream& is, std::ostream&) -> std
 }
 
 template <class DomainName, class DomainConvert>
-static void convert_model(const xml_tag& rModelTag, const DomainName& strDomain, std::istream& is, std::ostream& os, DomainConvert conv)
+static std::ostream::pos_type convert_model(const xml_tag& rModelTag, const DomainName& strDomain, std::istream& is, std::ostream& os, DomainConvert& conv)
 {
 	auto strAttr = rModelTag.attribute("cx");
 	if (strAttr.empty())
@@ -158,6 +173,7 @@ static void convert_model(const xml_tag& rModelTag, const DomainName& strDomain,
 	auto strAttr = rModelTag.attribute("name");
 	os << std::uint32_t(strAttr.size()) << strAttr << std::uint32_t(1) << std::uint32_t(3) << cx << cy << cz;
 	std::list<std::filesystem::path> mpDomainData;
+	auto posObjects = std::ostream::pos_type(-1);
 	while (true)
 	{
 		auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
@@ -176,6 +192,7 @@ static void convert_model(const xml_tag& rModelTag, const DomainName& strDomain,
 				buf_ostream os_tmp_2;
 				conv.model_domain_data(is, os_tmp);
 				os << std::uint32_t(os_tmp.size());
+				posObjects = os.tellp();
 			}
 		}else if (rModelTag.name() == "polyobject")
 		{
@@ -199,6 +216,49 @@ class conversion_state
 	std::ostream::pos_type m_cObjectsPos = std::ostream::pos_type(-1);
 	std::ostream* m_pOs = nullptr;
 	std::stack<std::istream*> m_prev;
+	bool m_fModel = false;
+
+	struct IConverter
+	{
+		virtual void model_domain_data(std::istream& is, std::ostream& os) = 0;
+		virtual void poly_domain_data(std::istream& is, std::ostream& os) = 0;
+		virtual void face_domain_data(std::istream& is, std::ostream& os) = 0;
+		virtual void source_domain_data(std::istream& is, std::ostream& os) = 0;
+		virtual void plain_domain_data(std::istream& is, std::ostream& os) = 0;
+
+		virtual ~IConverter() {}
+	};
+	template <class Converter>
+	struct ConverterImpl
+	{
+		virtual void model_domain_data(std::istream& is, std::ostream& os)
+		{
+			convert_model_domain_data(m_conv, is, os);
+		}
+		virtual void poly_domain_data(std::istream& is, std::ostream& os)
+		{
+			convert_poly_domain_data(m_conv, is, os);
+		}
+		virtual void face_domain_data(std::istream& is, std::ostream& os)
+		{
+			convert_face_domain_data(m_conv, is, os);
+		}
+		virtual void source_domain_data(std::istream& is, std::ostream& os)
+		{
+			convert_source_domain_data(m_conv, is, os);
+		}
+		virtual void plain_domain_data(std::istream& is, std::ostream& os)
+		{
+			convert_plain_domain_data(m_conv, is, os);
+		}
+
+		template <class Conv, class = std::enable_if_t<std::is_convertible_v<Conv&&, Converter>>>
+		ConverterImpl(Conv&& conv):m_conv(std::forward<Conv>(conv)) {}
+	private:
+		Converter m_conv;
+	};
+
+	std::unique_ptr<IConverter> m_pConv;
 public:
 	template <class DomainName>
 	conversion_state(DomainName&& domain, std::ostream& os):m_strDomain(std::forward<DomainName>(domain)), m_pOs(std::addressof(os)) {}
@@ -217,8 +277,18 @@ public:
 		if (tag.attribute("encoding") != "utf-8")
 			throw invalid_xml_data("XML encoding must be utf-8");
 		tag = xml_tag(is);
-		if (tag.name() != "model")
-			throw improper_xml_tag(tag.name());
+		if (tag.name() == "model")
+		{
+			if (m_fModel)
+				throw ambiguous_specification();
+			convert_model(tag, m_strDomain, is, *m_pOs, *m_pConv);
+		}else if (!m_fModel)
+		{
+			m_prev.push(&is);
+			return;
+		}else
+		{
+		}
 		//convert_model(tag, m_strDomain, is, *m_pOs, 0);
 
 	}
