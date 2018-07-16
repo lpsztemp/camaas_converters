@@ -211,6 +211,7 @@ class conversion_state
 			domain_data_map mapDomainData;
 		};
 		std::string name;
+		std::list<face_data> lstFaces;
 		domain_data_map mapDomainData;
 	};
 	std::map<std::string, poly_data> m_polyNamedMap;
@@ -386,7 +387,94 @@ public:
 
 
 private:
-	poly_data convert_poly(const xml_tag& rTag, std::istream& is);
+	poly_data::face_data convert_face(const xml_tag& rTag, std::istream& is)
+	{
+		poly_data::face_data face;
+		while (true)
+		{
+			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
+			if (it_is == std::istream_iterator<char>())
+				throw xml_invalid_syntax(is.tellg());
+			if (*it_is != '<')
+				throw invalid_xml_data(is.tellg());
+			auto tag = xml_tag(is);
+			if (tag.name() == "domain")
+			{
+				if (tag.is_closing_tag() || tag.is_unary_tag())
+					throw invalid_xml_data(is.tellg());
+				auto strDomain = tag.attribute("name");
+				if (strDomain.empty())
+					throw xml_attribute_not_found("name");
+				auto buf = memstreambuf();
+				std::ostream os_buf(&buf);
+				m_pConv->face_domain_data(std::move(strDomain), is, os_buf);
+				face.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector()));
+			}else if (tag.name() == "vertex")
+			{
+				if (!tag.is_unary_tag())
+					throw invalid_xml_data(is.tellg());
+				point_t v;
+				const auto& x = tag.attribute("x");
+				if (x.empty())
+					throw invalid_xml_data("Missing face vertex abscissa");
+				v.x = std::stod(x);
+				const auto& y = tag.attribute("y");
+				if (y.empty())
+					throw invalid_xml_data("Missing face vertex abscissa");
+				v.y = std::stod(y);
+				const auto& z = tag.attribute("z");
+				if (z.empty())
+					throw invalid_xml_data("Missing face vertex abscissa");
+				v.z = std::stod(z);
+				face.lstVertices.emplace_back(std::move(v));
+			}else if (tag.name() == "face" && tag.is_closing_tag())
+				break;
+			else
+				throw improper_xml_tag(is.tellg());
+		};
+		return face;
+	}
+	poly_data convert_poly(const xml_tag& rTag, std::istream& is)
+	{
+		poly_data poly;
+		auto name = rTag.attribute("name");
+		if (!rTag.empty())
+		{
+			if (!m_strModelName.empty())
+				throw ambiguous_specification("Model attribute \"name\"");
+			m_strModelName = std::move(strAttr);
+		}
+		while (true)
+		{
+			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
+			if (it_is == std::istream_iterator<char>())
+				throw xml_invalid_syntax(is.tellg());
+			if (*it_is != '<')
+				throw invalid_xml_data(is.tellg());
+			auto tag = xml_tag(is);
+			if (tag.name() == "domain")
+			{
+				if (tag.is_closing_tag() || tag.is_unary_tag())
+					throw invalid_xml_data(is.tellg());
+				auto strDomain = tag.attribute("name");
+				if (strDomain.empty())
+					throw xml_attribute_not_found("name");
+				auto buf = memstreambuf();
+				std::ostream os_buf(&buf);
+				m_pConv->poly_domain_data(std::move(strDomain), is, os_buf);
+				poly.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector()));
+			}else if (tag.name() == "face")
+			{
+				if (tag.is_closing_tag() || tag.is_unary_tag())
+					throw invalid_xml_data(is.tellg());
+				poly.lstFaces.emplace_back(convert_face(tag, is));
+			}else if (tag.name() == "poly" && tag.is_closing_tag())
+				break;
+			else
+				throw improper_xml_tag(is.tellg());
+		};
+		return poly;
+	}
 	poly_data convert_source(const xml_tag& rTag, std::istream& is);
 	poly_data convert_plain(const xml_tag& rTag, std::istream& is);
 	void convert_model(const xml_tag& rModelTag, std::istream& is)
@@ -434,8 +522,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				buf_ostream buf;
-				m_pConv->model_domain_data(std::move(strDomain), is, buf);
+				auto buf = memstreambuf();
+				std::ostream os_buf(&buf);
+				m_pConv->model_domain_data(std::move(strDomain), is, os_buf);
 				m_mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector()));
 			}else if (tag.name() == "polyobject")
 			{

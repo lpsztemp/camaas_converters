@@ -11,59 +11,15 @@
 #ifndef IMPL_BUF_OSTREAM_H
 #define IMPL_BUF_OSTREAM_H
 
-struct buf_ostream
+struct memstreambuf:std::streambuf
 {
+	typedef std::streambuf base_buf_t;
 	typedef std::uint8_t value_type;
-	typedef std::size_t size_type, pos_type;
-	buf_ostream() = default;
-	auto write(const void* pInput, std::size_t cbHowMany) -> buf_ostream&
-	{
-		auto cb = m_cbOffset + cbHowMany;
-		if (m_buf.empty())
-		{
-			m_buf.reserve(cb);
-			std::fill_n(std::back_inserter(m_buf), m_cbOffset, std::uint8_t());
-			std::copy(static_cast<const std::uint8_t*>(pInput), static_cast<const std::uint8_t*>(pInput) + cbHowMany,
-				std::back_inserter(m_buf));
-			m_cbOffset += cbHowMany;
-		}else if (m_cbOffset >= this->size())
-		{
-			auto cbFill = m_cbOffset - this->size();
-			auto block = this->make_list_data_block(pInput, cbHowMany, cbFill);
-			if (block.size() != 0)
-			{
-				auto cbBlock = m_lst_buf.emplace_back(std::move(block)).size();
-				m_cbListSize += cbBlock;
-				m_cbOffset += cbBlock;
-			}
-		}else
-		{
-			auto cbExtra = m_cbOffset + cbHowMany > this->size()?m_cbOffset + cbHowMany - this->size():std::size_t();
-			auto cbInPlace = cbHowMany - cbExtra;
-			this->serialize(cbExtra);
-			std::copy(static_cast<const std::uint8_t*>(pInput), static_cast<const std::uint8_t*>(pInput) + cbInPlace,
-				m_buf.begin() + m_cbOffset);
-			std::copy(static_cast<const std::uint8_t*>(pInput) + cbInPlace, static_cast<const std::uint8_t*>(pInput) + cbHowMany,
-				std::back_inserter(m_buf));
-			m_cbOffset = cb;
-		}
-		return *this;
-	}
-	template <class T>
-	auto write(const T* pInput, std::size_t cHowMany) -> std::enable_if_t<std::is_pod_v<T>, buf_ostream&>
-	{
-		return this->write(static_cast<const void*>(pInput), cHowMany * sizeof(T));
-	}
-	template <class T>
-	auto write(const T& rInput) -> buf_ostream&
-	{
-		return this->write(std::addressof(rInput), 1);
-	}
-	template <class T, std::size_t N>
-	auto write(const T(& pInput)[N]) -> buf_ostream&
-	{
-		return this->write(pInput, N);
-	}
+	typedef base_buf_t::char_type char_type;
+	typedef std::size_t size_type;
+	typedef base_buf_t::pos_type pos_type;
+	typedef base_buf_t::traits_type traits_type;
+	memstreambuf() = default;
 	const void* data() const
 	{
 		this->serialize();
@@ -90,34 +46,73 @@ struct buf_ostream
 		m_cbListSize = std::size_t();
 		m_cbOffset = std::size_t();
 	}
-	pos_type tellp() const
-	{
-		return m_cbOffset;
-	}
-	buf_ostream& seekp(pos_type pos)
-	{
-		m_cbOffset = pos;
-	}
-	buf_ostream& seekp(std::ptrdiff_t off, std::ios_base::seekdir dir)
+	virtual pos_type seekoff(off_type off, std::ios_base::seekdir dir, 
+		std::ios_base::openmode /*which*/ = std::ios_base::in | std::ios_base::out) final
 	{
 		if (dir == std::ios_base::beg)
 		{
 			if (off < 0)
-				throw std::invalid_argument("Invalid buf_ostream position");
+				throw std::invalid_argument("Invalid memstreambuf position");
 			m_cbOffset = std::size_t(off);
 		}else if (dir == std::ios_base::cur)
 		{
 			if ((std::ptrdiff_t) m_cbOffset + off < 0)
-				throw std::invalid_argument("Invalid buf_ostream position");
+				throw std::invalid_argument("Invalid memstreambuf position");
 			m_cbOffset += (std::size_t) off;
 		}else if (dir == std::ios_base::end)
 		{
 			if ((std::ptrdiff_t) this->size() + off < 0)
-				throw std::invalid_argument("Invalid buf_ostream position");
+				throw std::invalid_argument("Invalid memstreambuf position");
 			m_cbOffset = this->size() + (std::size_t) off;
 		}else
-			throw std::invalid_argument("Invalid buf_ostream direction");
+			throw std::invalid_argument("Invalid memstreambuf direction");
+		return m_cbOffset;
 	}
+	virtual pos_type seekpos(pos_type pos,
+		std::ios_base::openmode /*which*/ = std::ios_base::in | std::ios_base::out) noexcept final
+	{
+		return m_cbOffset = pos;
+	}
+	virtual std::streamsize xsputn(const char_type* pInput, std::streamsize cbHowMany) final
+	{
+		auto cb = m_cbOffset + cbHowMany;
+		auto pbInput = reinterpret_cast<const value_type*>(pInput);
+		if (m_buf.empty())
+		{
+			m_buf.reserve(cb);
+			std::fill_n(std::back_inserter(m_buf), m_cbOffset, std::uint8_t());
+			std::copy(pbInput, pbInput + cbHowMany, std::back_inserter(m_buf));
+			m_cbOffset += cbHowMany;
+		}else if (m_cbOffset >= this->size())
+		{
+			auto cbFill = m_cbOffset - this->size();
+			auto block = this->make_list_data_block(pbInput, cbHowMany, cbFill);
+			if (block.size() != 0)
+			{
+				auto cbBlock = m_lst_buf.emplace_back(std::move(block)).size();
+				m_cbListSize += cbBlock;
+				m_cbOffset += cbBlock;
+			}
+		}else
+		{
+			auto cbExtra = m_cbOffset + cbHowMany > this->size()?m_cbOffset + cbHowMany - this->size():std::size_t();
+			auto cbInPlace = cbHowMany - cbExtra;
+			this->serialize(cbExtra);
+			std::copy(pbInput, pbInput + cbInPlace, m_buf.begin() + m_cbOffset);
+			std::copy(pbInput + cbInPlace, pbInput + cbHowMany, std::back_inserter(m_buf));
+			m_cbOffset = cb;
+		}
+		return cbHowMany;
+	}
+	virtual int_type overflow(int_type ch = traits_type::eof())
+	{
+		if (!traits_type::eq_int_type(ch, traits_type::eof()))
+		{
+			auto l_ch = char_type(ch);
+			xsputn(&l_ch, 1);
+		}
+	}
+	
 private:
 	class data_block
 	{
@@ -170,12 +165,12 @@ private:
 		auto cb = cbData + cbFillBefore;
 		if (!cb)
 			return data_block();
-		auto ptr = std::make_unique<std::uint8_t[]>(cb);
-		std::fill_n(static_cast<const std::uint8_t*>(pData), cbFillBefore, std::uint8_t());
-		std::copy(static_cast<const std::uint8_t*>(pData) + cbFillBefore, static_cast<const std::uint8_t*>(pData) + cb, ptr.get());
+		auto ptr = std::make_unique<value_type[]>(cb);
+		std::fill_n(static_cast<const value_type*>(pData), cbFillBefore, value_type());
+		std::copy(static_cast<const value_type*>(pData) + cbFillBefore, static_cast<const value_type*>(pData) + cb, ptr.get());
 		return data_block(ptr.release(), cbData);
 	}
-	const buf_ostream& serialize(std::size_t cbExtra = std::size_t()) const
+	const memstreambuf& serialize(std::size_t cbExtra = std::size_t()) const
 	{
 		m_buf.reserve(m_buf.size() + m_cbListSize);
 		for (auto& nd:m_lst_buf)
@@ -185,12 +180,6 @@ private:
 		return *this;
 	}
 };
-
-template <class T>
-buf_ostream& operator<<(buf_ostream& os, const T& obj)
-{
-	return os.write(obj);
-}
 
 struct temp_path:std::filesystem::path
 {
