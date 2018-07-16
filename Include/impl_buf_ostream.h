@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <filesystem>
+#include <iostream>
 
 #ifndef IMPL_BUF_OSTREAM_H
 #define IMPL_BUF_OSTREAM_H
@@ -13,21 +14,39 @@
 struct buf_ostream
 {
 	typedef std::uint8_t value_type;
-	typedef std::size_t size_type;
+	typedef std::size_t size_type, pos_type;
 	buf_ostream() = default;
 	auto write(const void* pInput, std::size_t cbHowMany) -> buf_ostream&
 	{
-		if (!cbHowMany)
-			return *this;
+		auto cb = m_cbOffset + cbHowMany;
 		if (m_buf.empty())
 		{
-			m_buf.reserve(cbHowMany);
+			m_buf.reserve(cb);
+			std::fill_n(std::back_inserter(m_buf), m_cbOffset, std::uint8_t());
 			std::copy(static_cast<const std::uint8_t*>(pInput), static_cast<const std::uint8_t*>(pInput) + cbHowMany,
 				std::back_inserter(m_buf));
-			return *this;
+			m_cbOffset += cbHowMany;
+		}else if (m_cbOffset >= this->size())
+		{
+			auto cbFill = m_cbOffset - this->size();
+			auto block = this->make_list_data_block(pInput, cbHowMany, cbFill);
+			if (block.size() != 0)
+			{
+				auto cbBlock = m_lst_buf.emplace_back(std::move(block)).size();
+				m_cbListSize += cbBlock;
+				m_cbOffset += cbBlock;
+			}
+		}else
+		{
+			auto cbExtra = m_cbOffset + cbHowMany > this->size()?m_cbOffset + cbHowMany - this->size():std::size_t();
+			auto cbInPlace = cbHowMany - cbExtra;
+			this->serialize(cbExtra);
+			std::copy(static_cast<const std::uint8_t*>(pInput), static_cast<const std::uint8_t*>(pInput) + cbInPlace,
+				m_buf.begin() + m_cbOffset);
+			std::copy(static_cast<const std::uint8_t*>(pInput) + cbInPlace, static_cast<const std::uint8_t*>(pInput) + cbHowMany,
+				std::back_inserter(m_buf));
+			m_cbOffset = cb;
 		}
-		m_lst_buf.emplace_back(this->make_list_data_block(pInput, cbHowMany));
-		m_cbListSize += cbHowMany;
 		return *this;
 	}
 	template <class T>
@@ -52,8 +71,7 @@ struct buf_ostream
 	}
 	std::size_t size() const
 	{
-		this->serialize();
-		return m_buf.size();
+		return m_buf.size() + m_cbListSize;
 	}
 	const std::vector<std::uint8_t>& get_vector() const
 	{
@@ -69,7 +87,36 @@ struct buf_ostream
 	{
 		m_buf.clear();
 		m_lst_buf.clear();
-		m_cbListSize = 0;
+		m_cbListSize = std::size_t();
+		m_cbOffset = std::size_t();
+	}
+	pos_type tellp() const
+	{
+		return m_cbOffset;
+	}
+	buf_ostream& seekp(pos_type pos)
+	{
+		m_cbOffset = pos;
+	}
+	buf_ostream& seekp(std::ptrdiff_t off, std::ios_base::seekdir dir)
+	{
+		if (dir == std::ios_base::beg)
+		{
+			if (off < 0)
+				throw std::invalid_argument("Invalid buf_ostream position");
+			m_cbOffset = std::size_t(off);
+		}else if (dir == std::ios_base::cur)
+		{
+			if ((std::ptrdiff_t) m_cbOffset + off < 0)
+				throw std::invalid_argument("Invalid buf_ostream position");
+			m_cbOffset += (std::size_t) off;
+		}else if (dir == std::ios_base::end)
+		{
+			if ((std::ptrdiff_t) this->size() + off < 0)
+				throw std::invalid_argument("Invalid buf_ostream position");
+			m_cbOffset = this->size() + (std::size_t) off;
+		}else
+			throw std::invalid_argument("Invalid buf_ostream direction");
 	}
 private:
 	class data_block
@@ -116,16 +163,19 @@ private:
 	mutable std::vector<std::uint8_t> m_buf;
 	mutable std::list<data_block> m_lst_buf;
 	mutable std::size_t m_cbListSize = std::size_t();
+	std::size_t m_cbOffset = std::size_t();
 
-	auto make_list_data_block(const void* pData, std::size_t cbData) const -> data_block
+	auto make_list_data_block(const void* pData, std::size_t cbData, std::size_t cbFillBefore = 0) const -> data_block
 	{
-		if (!cbData)
+		auto cb = cbData + cbFillBefore;
+		if (!cb)
 			return data_block();
-		auto ptr = std::make_unique<std::uint8_t[]>(cbData);
-		std::copy(static_cast<const std::uint8_t*>(pData), static_cast<const std::uint8_t*>(pData) + cbData, ptr.get());
+		auto ptr = std::make_unique<std::uint8_t[]>(cb);
+		std::fill_n(static_cast<const std::uint8_t*>(pData), cbFillBefore, std::uint8_t());
+		std::copy(static_cast<const std::uint8_t*>(pData) + cbFillBefore, static_cast<const std::uint8_t*>(pData) + cb, ptr.get());
 		return data_block(ptr.release(), cbData);
 	}
-	const buf_ostream& serialize() const
+	const buf_ostream& serialize(std::size_t cbExtra = std::size_t()) const
 	{
 		m_buf.reserve(m_buf.size() + m_cbListSize);
 		for (auto& nd:m_lst_buf)

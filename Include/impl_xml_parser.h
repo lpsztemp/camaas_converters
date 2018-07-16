@@ -273,10 +273,19 @@ public:
 	template <class AttributeName>
 	const std::string& attribute(const AttributeName& attr) const
 	{
+		static const std::string strDefault;
+		auto it = m_mpAttributes.find(attr);
+		if (it == m_mpAttributes.end())
+			return strDefault;
+		return it->second;
+	}
+	template <class AttributeName>
+	std::string&& attribute(const AttributeName& attr)
+	{
 		auto it = m_mpAttributes.find(attr);
 		if (it == m_mpAttributes.end())
 			return std::string();
-		return it->second;
+		return std::move(it->second);
 	}
 private:
 	static std::tuple<char, std::string> get_rest(char chFirst, std::istream& is)
