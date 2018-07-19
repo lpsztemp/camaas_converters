@@ -111,6 +111,7 @@ struct memstreambuf:std::streambuf
 			auto l_ch = char_type(ch);
 			xsputn(&l_ch, 1);
 		}
+		return 0;
 	}
 	
 private:
@@ -166,15 +167,15 @@ private:
 		if (!cb)
 			return data_block();
 		auto ptr = std::make_unique<value_type[]>(cb);
-		std::fill_n(static_cast<const value_type*>(pData), cbFillBefore, value_type());
-		std::copy(static_cast<const value_type*>(pData) + cbFillBefore, static_cast<const value_type*>(pData) + cb, ptr.get());
+		std::fill_n(ptr.get(), cbFillBefore, value_type());
+		std::copy(static_cast<const value_type*>(pData), static_cast<const value_type*>(pData) + cb, ptr.get() + cbFillBefore);
 		return data_block(ptr.release(), cbData);
 	}
 	const memstreambuf& serialize(std::size_t cbExtra = std::size_t()) const
 	{
 		m_buf.reserve(m_buf.size() + m_cbListSize);
 		for (auto& nd:m_lst_buf)
-			m_buf.emplace_back(nd.data(), nd.size());
+			m_buf.insert(m_buf.end(), nd.data(), nd.data() + nd.size());
 		m_lst_buf.clear();
 		m_cbListSize = std::size_t();
 		return *this;

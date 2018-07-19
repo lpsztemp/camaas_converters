@@ -121,7 +121,7 @@ public:
 				if (!std::isprint(chCurrent, is.getloc()))
 					throw xml_invalid_syntax(is.tellg());
 				std::string attribute, value;
-				std::tie(attribute, chCurrent) = get_rest(chCurrent, is);
+				std::tie(chCurrent, attribute) = get_rest(chCurrent, is);
 				if (is.eof() || attribute != "version" && attribute != "encoding")
 					throw xml_invalid_syntax(is.tellg());
 				if (std::isspace(chCurrent, is.getloc()))
@@ -141,7 +141,7 @@ public:
 						throw xml_invalid_syntax(is.tellg());
 				}
 				if (!m_mpAttributes.emplace(attribute, value).second)
-					throw xml_attribute_already_specified(attribute, is.tellg);
+					throw xml_attribute_already_specified(attribute, is.tellg());
 			}
 		}
 		if (xml::isspace(chCurrent))
@@ -250,7 +250,7 @@ public:
 	}
 	inline bool is_closing_tag() const
 	{
-		m_fIsClosing;
+		return m_fIsClosing;
 	}
 	inline bool is_unary_tag() const
 	{
@@ -278,14 +278,6 @@ public:
 		if (it == m_mpAttributes.end())
 			return strDefault;
 		return it->second;
-	}
-	template <class AttributeName>
-	std::string&& attribute(const AttributeName& attr)
-	{
-		auto it = m_mpAttributes.find(attr);
-		if (it == m_mpAttributes.end())
-			return std::string();
-		return std::move(it->second);
 	}
 private:
 	static std::tuple<char, std::string> get_rest(char chFirst, std::istream& is)

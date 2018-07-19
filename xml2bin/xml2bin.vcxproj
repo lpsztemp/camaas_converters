@@ -143,6 +143,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Include\basedefs.h" />
     <ClInclude Include="..\Include\bin2text.h" />
     <ClInclude Include="..\Include\impl_arch_ac_domain_xml2bin.h" />
     <ClInclude Include="..\Include\impl_buf_ostream.h" />
