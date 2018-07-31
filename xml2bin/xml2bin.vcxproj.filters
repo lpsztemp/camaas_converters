@@ -32,10 +32,19 @@
     <ClInclude Include="..\Include\impl_xml_parser.h">
       <Filter>Header Files\Common\impl</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\impl_buf_ostream.h">
+    <ClInclude Include="..\Include\basedefs.h">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\hgt_optimizer.h">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\binary_streams.h">
       <Filter>Header Files\Common\impl</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\basedefs.h">
+    <ClInclude Include="..\Include\domain_converter.h">
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\exceptions.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -43,7 +52,16 @@
     <ClCompile Include="..\src\xml2bin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\impl_buf_ostream.cpp">
+    <ClCompile Include="..\src\face.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hgt_optimizer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\binary_streams.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="domain_converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

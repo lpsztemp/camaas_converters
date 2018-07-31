@@ -1,4 +1,5 @@
 #include <basedefs.h>
+#include <binary_streams.h>
 #include "impl_xml_parser.h"
 
 #ifndef IMPL_RADIO_HF_DOMAIN_XML2BIN_H_
@@ -10,12 +11,13 @@ struct radio_hf_convert
 	static const std::string& domain_name();
 
 	//NON MANDATORY METHODS
-	void model_domain_data(std::istream& is, std::ostream& os);
-	void poly_domain_data(std::istream& is, std::ostream& os);
-	void source_domain_data(std::istream& is, std::ostream& os);
+	void model_domain_data(std::istream& is, binary_ostream& os);
+	void poly_domain_data(std::istream& is, binary_ostream& os);
+	void source_domain_data(std::istream& is, binary_ostream& os);
 
 	//hgt
-	void constant_domain_data(ConstantDomainDataId id, std::ostream& os);
+	//must be thread safe
+	void constant_poly_domain_data(ConstantDomainDataId id, binary_ostream& os);
 };
 
 #endif //IMPL_RADIO_HF_DOMAIN_XML2BIN_H_

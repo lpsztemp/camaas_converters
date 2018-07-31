@@ -1,10 +1,3 @@
-#pragma warning (disable: 4996)
-#include <basedefs.h>
-#include <xml2bin.h>
-#include <impl_radio_hf_domain_xml2bin.h>
-#include <impl_arch_ac_domain_xml2bin.h>
-#include <impl_xml_parser.h>
-#include <impl_buf_ostream.h>
 #include <algorithm>
 #include <iterator>
 #include <functional>
@@ -12,6 +5,14 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <basedefs.h>
+#include <xml2bin.h>
+#include <impl_radio_hf_domain_xml2bin.h>
+#include <impl_arch_ac_domain_xml2bin.h>
+#include <impl_xml_parser.h>
+#include <binary_streams.h>
+#include <domain_converter.h>
+#include <hgt_optimizer.h>
 
 struct improper_xml_tag:std::invalid_argument
 {
@@ -65,121 +66,6 @@ struct input_not_ready:std::invalid_argument
 };
 
 
-static void skip_domain_data(std::istream& is) //"is" is associated with the first character after the closing '>'
-{
-	int level = 1;
-	char linebuf[100];
-	do
-	{
-		is.getline(linebuf, sizeof(linebuf), '<');
-		if (is.eof())
-			throw xml_invalid_syntax(is.tellg());
-		auto tag = xml_tag(is);
-		if (tag.name() != "domain")
-			continue;
-		if (!tag.is_closing_tag())
-		{
-			++level;
-			continue;
-		}
-		--level;
-	}while (level != 0);
-}
-
-//conversion of domain_data:
-/*
-struct
-{
-	static const std::string& domain_name();
-
-	void model_domain_data(is, os);
-	void poly_domain_data(is, os);
-	void face_domain_data(is, os);
-	void source_domain_data(is, os);
-	void plain_domain_data(is, os);
-	void constant_domain_data(SurfaceTypeId id, os);
-};
-*/
-
-template <class T, class = void> struct has_model_domain_data:std::false_type {};
-template <class T> struct has_model_domain_data<T, std::void_t<decltype(std::declval<T>().model_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
-template <class T, class = void> struct has_poly_domain_data:std::false_type {};
-template <class T> struct has_poly_domain_data<T, std::void_t<decltype(std::declval<T>().poly_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
-template <class T, class = void> struct has_face_domain_data:std::false_type {};
-template <class T> struct has_face_domain_data<T, std::void_t<decltype(std::declval<T>().face_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
-template <class T, class = void> struct has_source_domain_data:std::false_type {};
-template <class T> struct has_source_domain_data<T, std::void_t<decltype(std::declval<T>().source_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
-template <class T, class = void> struct has_plain_domain_data:std::false_type {};
-template <class T> struct has_plain_domain_data<T, std::void_t<decltype(std::declval<T>().plain_domain_data(std::declval<std::istream&>(), std::declval<std::ostream&>()))>>:std::true_type {};
-template <class T, class = void> struct has_constant_domain_data:std::false_type {};
-template <class T> struct has_constant_domain_data<T, std::void_t<decltype(std::declval<T>().constant_domain_data(std::declval<ConstantDomainDataId>(), std::declval<std::ostream&>()))>>:std::true_type {};
-
-template <class Convert>
-auto convert_model_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_model_domain_data<Convert&>::value>
-{
-	return conv.model_domain_data(is, os);
-}
-template <class Convert>
-auto convert_model_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_model_domain_data<Convert&>::value>
-{
-	skip_domain_data(is);
-}
-template <class Convert>
-auto convert_poly_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_poly_domain_data<Convert&>::value>
-{
-	return conv.poly_domain_data(is, os);
-}
-template <class Convert>
-auto convert_poly_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_poly_domain_data<Convert&>::value>
-{
-	skip_domain_data(is);
-}
-
-template <class Convert>
-auto convert_face_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_face_domain_data<Convert&>::value>
-{
-	return conv.face_domain_data(is, os);
-}
-template <class Convert>
-auto convert_face_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_face_domain_data<Convert&>::value>
-{
-	skip_domain_data(is);
-}
-
-template <class Convert>
-auto convert_source_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_source_domain_data<Convert&>::value>
-{
-	return conv.source_domain_data(is, os);
-}
-template <class Convert>
-auto convert_source_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_source_domain_data<Convert&>::value>
-{
-	skip_domain_data(is);
-}
-
-template <class Convert>
-auto convert_plain_domain_data(Convert& conv, std::istream& is, std::ostream& os) -> std::enable_if_t<has_plain_domain_data<Convert&>::value>
-{
-	return conv.plain_domain_data(is, os);
-}
-template <class Convert>
-auto convert_plain_domain_data(Convert&, std::istream& is, std::ostream&) -> std::enable_if_t<!has_plain_domain_data<Convert&>::value>
-{
-	skip_domain_data(is);
-}
-
-template <class Convert>
-auto write_constant_domain_data(Convert& conv, ConstantDomainDataId data_id, std::ostream& os) -> std::enable_if_t<has_constant_domain_data<Convert&>::value, bool>
-{
-	conv.constant_domain_data(data_id, os);
-	return true;
-}
-template <class Convert>
-auto write_constant_domain_data(Convert&, ConstantDomainDataId, std::ostream&) -> std::enable_if_t<!has_constant_domain_data<Convert&>::value, bool>
-{
-	return false;
-}
-
 constexpr double unspecified_double()
 {
 	return std::numeric_limits<double>::infinity();
@@ -189,11 +75,6 @@ constexpr bool is_specified(double val)
 {
 	return val != unspecified_double();
 }
-
-struct point_t
-{
-	double x, y, z;
-};
 
 constexpr point_t unspecified_point()
 {
@@ -217,7 +98,7 @@ struct is_iteratable<T, std::void_t<decltype(std::begin(std::declval<T>())), dec
 
 class conversion_state_impl:public Implementation::conversion_state
 {
-	std::ostream* m_pOs = nullptr;
+	binary_ostream* m_pOs = nullptr;
 	std::istream* m_pHgt = nullptr;
 	HGT_RESOLUTION_DATA m_hgt_res = {double(), double(), std::size_t(), std::size_t()};
 	point_t m_size;
@@ -260,170 +141,10 @@ class conversion_state_impl:public Implementation::conversion_state
 		std::string name;
 	};
 	std::map<std::string, plain_data> m_plainNamedMap;
-	std::list<plain_data> m_plainUnnamedList;		
-
-	struct IConverter
-	{
-		virtual void model_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os) = 0;
-		virtual void poly_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os) = 0;
-		virtual void face_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os) = 0;
-		virtual void source_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os) = 0;
-		virtual void plain_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os) = 0;
-		virtual std::optional<domain_data_map::value_type> constant_domain_data(const std::string_view&, ConstantDomainDataId id) = 0;
-		virtual domain_data_map constant_domain_data(ConstantDomainDataId id) = 0;
-
-		virtual ~IConverter() {}
-	};
-	template <class Converter>
-	struct ConverterImpl:IConverter
-	{
-		virtual void model_domain_data(const std::string_view&, std::istream& is, std::ostream& os)
-		{
-			convert_model_domain_data(m_conv, is, os);
-		}
-		virtual void poly_domain_data(const std::string_view&, std::istream& is, std::ostream& os)
-		{
-			convert_poly_domain_data(m_conv, is, os);
-		}
-		virtual void face_domain_data(const std::string_view&, std::istream& is, std::ostream& os)
-		{
-			convert_face_domain_data(m_conv, is, os);
-		}
-		virtual void source_domain_data(const std::string_view&, std::istream& is, std::ostream& os)
-		{
-			convert_source_domain_data(m_conv, is, os);
-		}
-		virtual void plain_domain_data(const std::string_view&, std::istream& is, std::ostream& os)
-		{
-			convert_plain_domain_data(m_conv, is, os);
-		}
-		virtual std::optional<domain_data_map::value_type> constant_domain_data(const std::string_view&, ConstantDomainDataId id)
-		{
-			auto buf = memstreambuf{};
-			std::ostream os{std::addressof(buf)};
-			if (!write_constant_domain_data(m_conv, id, os))
-				return std::optional<domain_data_map::value_type>();
-			return std::optional<domain_data_map::value_type>(std::in_place_t(), Converter::name(), buf.get_vector());
-		}
-		virtual domain_data_map constant_domain_data(ConstantDomainDataId id)
-		{
-			return domain_data_map{this->constant_domain_data(Converter::name(), id)};
-		}
-
-		template <class ... ConverterParams, class = std::enable_if_t<std::is_constructible_v<Converter, ConverterParams&& ... >>>
-		ConverterImpl(ConverterParams&& ... conv):m_conv(std::forward<ConverterParams>(conv) ... ) {}
-	private:
-		Converter m_conv;
-	};
-
-	struct generalized_converter:IConverter
-	{
-		template <class NameConverterTuple>
-		generalized_converter(NameConverterTuple&& name_conv_tpl):m_mpConv(create_map(std::forward<NameConverterTuple>(name_conv_tpl)))
-		{}
-		virtual void model_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-				convert_model_domain_data(*itConv->second, is, os);
-			else
-				skip_domain_data(is);
-		}
-		virtual void poly_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-				convert_poly_domain_data(*itConv->second, is, os);
-			else
-				skip_domain_data(is);
-		}
-		virtual void face_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-				convert_face_domain_data(*itConv->second, is, os);
-			else
-				skip_domain_data(is);
-		}
-		virtual void source_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-				convert_source_domain_data(*itConv->second, is, os);
-			else
-				skip_domain_data(is);
-		}
-		virtual void plain_domain_data(const std::string_view& DomainName, std::istream& is, std::ostream& os)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-				convert_plain_domain_data(*itConv->second, is, os);
-			else
-				skip_domain_data(is);
-		}
-		virtual std::optional<domain_data_map::value_type> constant_domain_data(const std::string_view& DomainName, ConstantDomainDataId id)
-		{
-			auto itConv = m_mpConv.find(DomainName);
-			if (itConv != m_mpConv.end())
-			{
-				auto buf = memstreambuf();
-				std::ostream os{&buf};
-				if (!write_constant_domain_data(itConv->second, id, os))
-					return std::optional<domain_data_map::value_type>();
-				return std::optional<domain_data_map::value_type>{std::in_place_t(), DomainName, buf.get_vector()};
-			}
-		}
-		virtual domain_data_map constant_domain_data(ConstantDomainDataId id)
-		{
-			domain_data_map mpRet;
-			for (auto& conv:m_mpConv)
-			{
-				auto buf = memstreambuf();
-				std::ostream os{&buf};
-				if (write_constant_domain_data(conv.second, id, os))
-					mpRet.emplace(conv.first, buf.get_vector());
-			}
-			return mpRet;
-		}
-	private:
-		struct less_transparent
-		{
-			bool operator()(const std::string_view& lhs, const std::string_view& rhs) const
-			{
-				return lhs < rhs;
-			}
-			typedef void is_transparent;
-		};
-		typedef std::map<std::string, std::unique_ptr<IConverter>, less_transparent> map_type;
-		map_type m_mpConv;
-		template <std::size_t I = 0, class ... Init>
-		static auto create_map(const std::tuple<Init...>& tpl) -> std::enable_if_t<(I + 1 < sizeof ... (Init)), map_type>
-		{
-			map_type mp = create_map<I + 2>(tpl);
-			mp.emplace(std::get<I>(tpl), std::unique_ptr<IConverter>(new ConverterImpl<std::tuple_element_t<I + 1, std::tuple<Init...>>>(std::get<I + 1>(tpl))));
-			return mp;
-		}
-		template <std::size_t I = 0, class ... Init>
-		static auto create_map(std::tuple<Init...>&& tpl) -> std::enable_if_t<(I + 1 < sizeof ... (Init)), map_type>
-		{
-			map_type mp = create_map<I + 2>(std::move(tpl));
-			mp.emplace(std::get<I>(tpl), std::unique_ptr<IConverter>(new ConverterImpl<std::tuple_element_t<I + 1, std::tuple<Init...>>>(std::get<I + 1>(std::move(tpl)))));
-			return mp;
-		}
-		template <std::size_t I = 0>
-		static auto create_map(...)
-		{
-			return map_type();
-		}
-	};
-	std::unique_ptr<IConverter> m_pConv;
-
-	struct hgt_converter
-	{
-	};
-	
+	std::list<plain_data> m_plainUnnamedList;
+	std::unique_ptr<IDomainConverter> m_pConv;
 public:
-	conversion_state_impl(const std::string_view& domain, std::ostream& os):m_pOs(std::addressof(os))
+	conversion_state_impl(const std::string_view& domain, binary_ostream& os):m_pOs(std::addressof(os))
 	{
 		if (domain == radio_hf_convert::domain_name())
 			m_pConv.reset(new ConverterImpl<radio_hf_convert>(radio_hf_convert()));
@@ -432,7 +153,7 @@ public:
 		else
 			throw std::invalid_argument("Unknown domain name");
 	}
-	explicit conversion_state_impl(std::ostream& os):m_pOs(std::addressof(os))
+	explicit conversion_state_impl(binary_ostream& os):m_pOs(std::addressof(os))
 	{
 		m_pConv.reset(new generalized_converter(std::make_tuple(
 			radio_hf_convert::domain_name(),	radio_hf_convert(),
@@ -473,11 +194,12 @@ public:
 		auto& os = *m_pOs;
 		this->write_sequence(m_strModelName);
 		this->write(CHU_METERS);
+		auto model_size_pos = os.tellp();
 		this->write(m_size);
 		this->write(m_mapDomainData);
-		if (m_pHgt) {}
-
-		os << std::uint32_t(this->poly_count() + this->source_count() + this->plain_count());
+		auto object_count = std::uint32_t(this->poly_count() + this->source_count() + this->plain_count());
+		auto object_count_pos = os.tellp();
+		os << object_count;
 		for (const auto& poly:m_polyNamedMap)
 			this->write(poly.second);
 		for (const auto& poly:m_polyUnnamedList)
@@ -490,6 +212,22 @@ public:
 			this->write(plain.second);
 		for (const auto& plain:m_plainUnnamedList)
 			this->write(plain);
+		if (m_pHgt)
+		{
+			auto hgt_stats = convert_hgt(m_hgt_res, *m_pHgt, *m_pConv, os);
+			auto old_pos = os.tellp();
+			if (!is_specified(m_size))
+			{
+				m_size.x = m_hgt_res.cColumns * m_hgt_res.dx;
+				m_size.y = m_hgt_res.cRows * m_hgt_res.dy;
+				m_size.z = hgt_stats.max_height;
+				os.seekp(model_size_pos);
+				this->write(m_size);
+
+			}
+			os.seekp(object_count_pos);
+			os << object_count + std::uint32_t(hgt_stats.poly_count);
+		}
 	}
 
 
@@ -512,10 +250,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				auto buf = memstreambuf();
-				std::ostream os_buf(&buf);
+				buf_ostream os_buf;
 				m_pConv->face_domain_data(std::move(strDomain), is, os_buf);
-				face.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector()));
+				face.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
 			}else if (tag.name() == "vertex")
 			{
 				if (!tag.is_unary_tag())
@@ -560,10 +297,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				auto buf = memstreambuf();
-				std::ostream os_buf(&buf);
+				buf_ostream os_buf;
 				m_pConv->poly_domain_data(std::move(strDomain), is, os_buf);
-				if (!poly.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector())).second)
+				if (!poly.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of polyobject")
 						+ (poly.name.empty()?std::string():(std::string(" \"") + poly.name + std::string("\""))));
 			}else if (tag.name() == "face")
@@ -597,10 +333,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				auto buf = memstreambuf();
-				std::ostream os_buf(&buf);
+				buf_ostream os_buf;
 				m_pConv->source_domain_data(std::move(strDomain), is, os_buf);
-				if (!source.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector())).second)
+				if (!source.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of sourceobject")
 						+ (source.name.empty()?std::string():(std::string(" \"") + source.name + std::string("\""))));
 			}else if (tag.name() == "position")
@@ -677,10 +412,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				auto buf = memstreambuf();
-				std::ostream os_buf(&buf);
+				buf_ostream os_buf;
 				m_pConv->plain_domain_data(std::move(strDomain), is, os_buf);
-				if (!plain.mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector())).second)
+				if (!plain.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of sourceobject")
 						+ (plain.name.empty()?std::string():(std::string(" \"") + plain.name + std::string("\""))));
 			}else if (tag.name() == "position")
@@ -783,10 +517,9 @@ private:
 				auto strDomain = tag.attribute("name");
 				if (strDomain.empty())
 					throw xml_attribute_not_found("name");
-				auto buf = memstreambuf();
-				std::ostream os_buf(&buf);
+				buf_ostream os_buf;
 				m_pConv->model_domain_data(std::move(strDomain), is, os_buf);
-				m_mapDomainData.emplace(std::move(strDomain), std::move(buf.get_vector()));
+				m_mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
 			}else if (tag.name() == "polyobject")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
@@ -832,29 +565,25 @@ private:
 				throw improper_xml_tag(is.tellg());
 		};
 	}
-	
-
-
-	
 	template <class T>
-	auto write(std::ostream& os, const T& val) const -> std::enable_if_t<std::is_pod_v<std::decay_t<T>>>
+	auto write(binary_ostream& os, const T& val) const -> std::enable_if_t<std::is_pod_v<std::decay_t<T>>>
 	{
 		os << val;
 	}
-	void write(std::ostream& os, const point_t& pt) const
+	void write(binary_ostream& os, const point_t& pt) const
 	{
 		os << std::uint32_t(3) // dimensions
 			<< pt.x << pt.y << pt.z;
 	}
 	template <class Cont>
-	auto write_sequence(std::ostream& os, const Cont& cont) const -> std::enable_if_t<has_data_and_size<Cont>::value>
+	auto write_sequence(binary_ostream& os, const Cont& cont) const -> std::enable_if_t<has_data_and_size<Cont>::value>
 	{
 		std::size_t cb = cont.size() * sizeof(typename std::decay<Cont>::type::value_type);
 		os << std::uint32_t(cb);
 		os.write(reinterpret_cast<const char*>(cont.data()), cb);
 	}
 	template <class Cont>
-	auto write_sequence(std::ostream& os, const Cont& cont) const -> std::enable_if_t<!has_data_and_size<Cont>::value && is_iteratable<Cont>::value>
+	auto write_sequence(binary_ostream& os, const Cont& cont) const -> std::enable_if_t<!has_data_and_size<Cont>::value && is_iteratable<Cont>::value>
 	{
 		using std::begin;
 		using std::end;
@@ -862,7 +591,7 @@ private:
 		for (const auto& elem:cont)
 			this->write(os, elem);
 	}
-	void write(std::ostream& os, const domain_data_map& mpDomainData) const
+	void write(binary_ostream& os, const domain_data_map& mpDomainData) const
 	{
 		os << std::uint32_t(mpDomainData.size());
 		for (const auto& prDomainData:mpDomainData)
@@ -871,27 +600,27 @@ private:
 			this->write_sequence(os, prDomainData.second);
 		}
 	}
-	void write_object_generic_part(std::ostream& os, const std::string_view& strObjectName, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
+	void write_object_generic_part(binary_ostream& os, const std::string_view& strObjectName, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
 	{
 		this->write_sequence(os, strObjectName);
 		this->write(os, mpDomainData);
 		os << type_id;
 	}
-	void write_object_generic_part(std::ostream& os, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
+	void write_object_generic_part(binary_ostream& os, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
 	{
 		write_object_generic_part(os, std::string_view(), mpDomainData, type_id);
 	}
-	void write(std::ostream& os, const poly_data::face_data& face) const
+	void write(binary_ostream& os, const poly_data::face_data& face) const
 	{
 		this->write_sequence(os, face.lstVertices);
 		this->write(os, face.mapDomainData);
 	}
-	void write(std::ostream& os, const poly_data& poly) const
+	void write(binary_ostream& os, const poly_data& poly) const
 	{
 		this->write_object_generic_part(os, poly.name, poly.mapDomainData, ObjectPoly);
 		this->write_sequence(os, poly.lstFaces);
 	}
-	void write(std::ostream& os, const source_data& src) const
+	void write(binary_ostream& os, const source_data& src) const
 	{
 		this->write_object_generic_part(os, src.name, src.mapDomainData, ObjectSource);
 		this->write(os, src.pos);
@@ -899,7 +628,7 @@ private:
 		this->write(os, src.dir);
 		this->write(os, src.top);
 	}
-	void write(std::ostream& os, const plain_data& plain) const
+	void write(binary_ostream& os, const plain_data& plain) const
 	{
 		this->write_object_generic_part(os, plain.name, plain.mapDomainData, ObjectSource);
 		this->write(os, plain.pos);
@@ -936,75 +665,11 @@ private:
 	{
 		return m_plainNamedMap.size() + m_plainUnnamedList.size();
 	};
-
-	template <std::size_t vertices_per_thread>
-	static constexpr auto hgt_face_count(std::size_t cols, std::size_t rows) -> std::enable_if_t<vertices_per_thread == 3, std::size_t>
-	{
-		return (cols - 1) * (rows - 1) * 2;
-	}
-	template <std::size_t vertices_per_thread>
-	static constexpr auto hgt_face_count(std::size_t cols, std::size_t rows) -> std::enable_if_t<vertices_per_thread == 4, std::size_t>
-	{
-		return (cols - 1) * (rows - 1);
-	}
-	template <std::size_t vertices_per_thread>
-	static constexpr auto hgt_output_bytes(std::size_t cols, std::size_t rows) -> std::size_t
-	{
-		constexpr std::size_t face_cb =
-			sizeof(std::uint32_t) /*number of vertices*/
-			+ vertices_per_thread *
-				(
-					sizeof(std::uint32_t) /*number of dimensions*/
-					+ 3 /*dimensions*/ * sizeof(double)
-				);
-		return hgt_face_count<vertices_per_thread>(cols, rows) * face_cb;
-	}
-
-	static constexpr std::size_t HGT_COLUMNS_PER_THREAD = 100;
-	static constexpr std::size_t HGT_ROWS_PER_THREAD = 100;
-
-	struct byte_buf
-	{
-		byte_buf() = default;
-		explicit byte_buf(std::size_t cb):m_ptr(std::unique_ptr<std::uint8_t[]>(new std::uint8_t[cb])), m_cb(cb)
-		{
-		}
-		std::uint8_t* data() const
-		{
-			return m_ptr.get();
-		}
-		std::size_t size() const
-		{
-			return m_cb;
-		}
-	private:
-		std::unique_ptr<std::uint8_t[]> m_ptr;
-		std::size_t m_cb = 0;
-	};
-
-	//first: land, second: water
-	static std::pair<byte_buf, byte_buf> triangulate(const HGT_RESOLUTION_DATA& resolution, const void* pRead, std::size_t cbRead);
-	template <std::size_t vertices_per_thread = 3>
-	void convert_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is, std::ostream& os)
-	{
-		std::ostream::pos_type land_faces, water_faces;
-
-		auto water_data = m_pConv->constant_domain_data(ConstantDomainDataId::SurfaceWater);
-		auto land_data = m_pConv->constant_domain_data(ConstantDomainDataId::SurfaceLand);
-
-
-		auto cbInput = resolution.cColumns * resolution.cRows * sizeof(std::uint16_t);
-		auto cbOutput = hgt_output_bytes<vertices_per_thread>(resolution.cColumns, resolution.cRows);
-		auto cbRead = resolution.cColumns * HGT_ROWS_PER_THREAD * sizeof(std::uint16_t);
-		auto cbWrite = hgt_output_bytes<vertices_per_thread>(resolution.cColumns, HGT_ROWS_PER_THREAD);
-		std::ostream::pos_type land_faces = os.tellp(), water_faces = os.tellp() + cbWrite;
-		std::size_t cLandFacesWritten = 0, cWaterFacesWritten = 0;
-	}
 };
 
 namespace Implementation
 {
-	std::unique_ptr<conversion_state> xml2bin_set(const std::string& domain, std::ostream& os)
+	std::unique_ptr<conversion_state> xml2bin_set(const std::string& domain, binary_ostream& os)
 	{
 		return std::unique_ptr<conversion_state>(new conversion_state_impl(domain, os));
 	}

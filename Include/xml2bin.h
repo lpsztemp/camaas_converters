@@ -7,6 +7,7 @@
 #include <memory>
 #include <fstream>
 #include <stack>
+#include <binary_streams.h>
 
 #ifndef XML2BIN_H_
 #define XML2BIN_H_
@@ -19,13 +20,13 @@ struct HGT_RESOLUTION_DATA
 	std::size_t cRows;
 };
 
-static const HGT_RESOLUTION_DATA HGT_1 = {30, 30, 3601, 3601};
-static const HGT_RESOLUTION_DATA HGT_3 = {90, 90, 1201, 1201};
+static constexpr HGT_RESOLUTION_DATA HGT_1 = {30, 30, 3601, 3601};
+static constexpr HGT_RESOLUTION_DATA HGT_3 = {90, 90, 1201, 1201};
 
 namespace Implementation
 {
 	struct conversion_state {virtual inline ~conversion_state() {}};
-	std::unique_ptr<conversion_state> xml2bin_set(const std::string& domain, std::ostream& os);
+	std::unique_ptr<conversion_state> xml2bin_set(const std::string& domain, binary_ostream& os);
 	void xml2bin_next_xml(const std::unique_ptr<conversion_state>& state, std::istream& is);
 	void xml2bin_next_hgt(const std::unique_ptr<conversion_state>& state, const HGT_RESOLUTION_DATA& resolution, std::istream& is);
 	void xml2bin_finalize(const std::unique_ptr<conversion_state>& state);
@@ -45,7 +46,7 @@ namespace Implementation
 }
 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
-auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, std::ostream& os)
+auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, binary_ostream& os)
 	-> std::enable_if_t<
 		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
 		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
@@ -59,7 +60,7 @@ auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, 
 }
 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
-auto hgtxml2bin(const DomainString& strDomain, const HGT_RESOLUTION_DATA& resolution, std::istream& isHgt, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, std::ostream& os)
+auto hgtxml2bin(const DomainString& strDomain, const HGT_RESOLUTION_DATA& resolution, std::istream& isHgt, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, binary_ostream& os)
 	-> std::enable_if_t<
 		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
 		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value

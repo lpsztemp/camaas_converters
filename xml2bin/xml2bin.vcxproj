@@ -88,6 +88,7 @@
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -100,6 +101,7 @@
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -114,6 +116,7 @@
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -130,6 +133,7 @@
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -145,15 +149,21 @@
   <ItemGroup>
     <ClInclude Include="..\Include\basedefs.h" />
     <ClInclude Include="..\Include\bin2text.h" />
+    <ClInclude Include="..\Include\domain_converter.h" />
+    <ClInclude Include="..\Include\exceptions.h" />
+    <ClInclude Include="..\Include\hgt_optimizer.h" />
     <ClInclude Include="..\Include\impl_arch_ac_domain_xml2bin.h" />
-    <ClInclude Include="..\Include\impl_buf_ostream.h" />
+    <ClInclude Include="..\Include\binary_streams.h" />
     <ClInclude Include="..\Include\impl_radio_hf_domain_xml2bin.h" />
     <ClInclude Include="..\Include\impl_xml_parser.h" />
     <ClInclude Include="..\Include\xml2bin.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\impl_buf_ostream.cpp" />
+    <ClCompile Include="..\src\face.cpp" />
+    <ClCompile Include="..\src\hgt_optimizer.cpp" />
+    <ClCompile Include="..\src\binary_streams.cpp" />
     <ClCompile Include="..\src\xml2bin.cpp" />
+    <ClCompile Include="domain_converter.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

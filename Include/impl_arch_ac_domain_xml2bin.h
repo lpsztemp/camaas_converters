@@ -9,9 +9,9 @@ struct arch_ac_convert
 	static const std::string& domain_name();
 
 	//NON MANDATORY METHODS
-	void model_domain_data(std::istream& is, std::ostream& os);
-	void face_domain_data(std::istream& is, std::ostream& os);
-	void source_domain_data(std::istream& is, std::ostream& os);
+	void model_domain_data(std::istream& is, binary_ostream& os);
+	void face_domain_data(std::istream& is, binary_ostream& os);
+	void source_domain_data(std::istream& is, binary_ostream& os);
 };
 
 #endif //IMPL_ARCH_AC_DOMAIN_XML2BIN_H_
