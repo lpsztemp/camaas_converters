@@ -7,320 +7,154 @@
 #include <algorithm>
 #include <iterator>
 #include <locale>
+#include <text_streams.h>
+#include <cwctype>
+#include <exceptions.h>
 
 #ifndef IMPL_XML_PARSER_H_
 #define IMPL_XML_PARSER_H_
 
 namespace xml
 {
-	constexpr bool isspace(char ch)
+	namespace Implementation
 	{
-		return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
-	}
-	constexpr bool isdigit(char ch)
-	{
-		return ch >= '0' && ch <= '9';
-	}
-	constexpr bool isprint(char ch)
-	{
-		return (ch >= 'A' && ch <= 'Z')
-			|| (ch >= 'a' && ch <= 'z')
-			|| ch =='_'
-			|| isdigit(ch)
-			|| ch > 127; //beyond ANSI ASCII range
-	}
-}
-
-struct xml_attribute_not_found:std::runtime_error
-{
-	xml_attribute_not_found():std::runtime_error("Attribute is not found") {}
-	template <class AttributeName>
-	xml_attribute_not_found(const AttributeName& attr):std::runtime_error(form_what(attr)) {}
-private:
-	template <class AttributeName>
-	static std::string form_what(const AttributeName& attr)
-	{
-		std::ostringstream os;
-		os << "Attribute " << attr << " was not found";
-		return os.str();
-	}
-};
-
-struct xml_attribute_already_specified:std::runtime_error
-{
-	xml_attribute_already_specified():std::runtime_error("Attribute is not unique") {}
-	template <class AttributeName>
-	xml_attribute_already_specified(const AttributeName& attr):std::runtime_error(form_what(attr)) {}
-	template <class AttributeName>
-	xml_attribute_already_specified(const AttributeName& attr, std::istream::pos_type pos):std::runtime_error(form_what(attr, pos)) {}
-private:
-	template <class AttributeName>
-	static std::string form_what(const AttributeName& attr)
-	{
-		std::ostringstream os;
-		os << "Attribute " << attr << " was not unique";
-		return os.str();
-	}
-	template <class AttributeName>
-	static std::string form_what(const AttributeName& attr, std::istream::pos_type pos)
-	{
-		std::ostringstream os;
-		os << "Attribute " << attr << " was not unique at offset " << pos;
-		return os.str();
-	}
-};
-
-struct xml_invalid_syntax:std::invalid_argument
-{
-	xml_invalid_syntax():std::invalid_argument("Invalid xml syntax") {}
-	xml_invalid_syntax(std::istream::pos_type pos):std::invalid_argument(form_what(pos)) {}
-
-public:
-	static std::string form_what(std::istream::pos_type pos)
-	{
-		std::ostringstream os;
-		os << "Invalid xml syntax at offset " << pos;
-		return os.str();
-	}
-};
-
-class xml_tag
-{
-	std::string m_strTag;
-	std::map<std::string, std::string> m_mpAttributes;
-	bool m_fIsComment = false;
-	bool m_fIsClosing = false;
-	bool m_fIsUnary = false;
-	bool m_fIsHeader = false;
-public:
-	//On input: "is" corresponds to the first symbol following the opening angle bracket '<'
-	//On output "is" corresponds to the first symbol following the closing angle bracket '>'
-	//If a comment is encountered, on output "is" is associated with the first symbol after the "-->" sequence
-	explicit xml_tag(std::istream& is)
-	{
-		char chCurrent = is.get();
-		if (chCurrent = '?')
+		template <int (*is_f)(std::wint_t /*char, const std::locale&*/)>
+		struct is_functor
 		{
-			char buf[4];
-			is.getline(buf, 4);
-			if (std::strcmp(buf, "xml") != 0 || is.eof() || !std::isspace(is.get(), is.getloc()))
-				throw xml_invalid_syntax(is.tellg());
-			chCurrent = skip_spaces(is);
-			if (is.eof())
-				throw xml_invalid_syntax(is.tellg());
-			while (true)
+			inline bool operator()(std::wint_t ch) const
 			{
-				if (chCurrent == '?')
-				{
-					chCurrent = is.get();
-					if (is.eof() || chCurrent != '>')
-						throw xml_invalid_syntax(is.tellg());
-					m_fIsHeader = true;
-					return;
-				}
-				if (!std::isprint(chCurrent, is.getloc()))
-					throw xml_invalid_syntax(is.tellg());
-				std::string attribute, value;
-				std::tie(chCurrent, attribute) = get_rest(chCurrent, is);
-				if (is.eof() || attribute != "version" && attribute != "encoding")
-					throw xml_invalid_syntax(is.tellg());
-				if (std::isspace(chCurrent, is.getloc()))
-					chCurrent = skip_spaces(is);
-				if (chCurrent != '=')
-					throw xml_invalid_syntax(is.tellg());
-				chCurrent = skip_spaces(is);
-				if (is.eof())
-					throw xml_invalid_syntax(is.tellg());
-				if (chCurrent != '\"')
-					throw xml_invalid_syntax(is.tellg());
-				std::tie(chCurrent, value) = get_string_in_quotes(is);
-				if (std::isspace(chCurrent, is.getloc()))
-				{
-					chCurrent = skip_spaces(is);
-					if (is.eof())
-						throw xml_invalid_syntax(is.tellg());
-				}
-				if (!m_mpAttributes.emplace(attribute, value).second)
-					throw xml_attribute_already_specified(attribute, is.tellg());
+				return is_f(ch);
 			}
-		}
-		if (xml::isspace(chCurrent))
-		{
-			chCurrent = skip_spaces(is);
-			if (is.eof())
-				throw xml_invalid_syntax(is.tellg());
-		}
-		switch (chCurrent)
-		{
-		case '/':
-		{
-			chCurrent = skip_spaces(is);
-			if (is.eof())
-				throw xml_invalid_syntax(is.tellg());
-			std::tie(chCurrent, m_strTag) = get_rest(chCurrent, is);
-			if (is.eof() || m_strTag.empty())
-				throw xml_invalid_syntax(is.tellg());
-			if (xml::isspace(chCurrent))
-			{
-				chCurrent = skip_spaces(is);
-				if (is.eof())
-					throw xml_invalid_syntax(is.tellg());
-			}
-			if (chCurrent != '>')
-				throw xml_invalid_syntax(is.tellg());
-			m_fIsClosing = true;
-			return;
-		}
-		case '!':
-			if ((char) is.get() != '-' || is.eof() || (char) is.get() != '-' || is.eof())
-				throw xml_invalid_syntax(is.tellg());
-			while (true)
-			{
-				while (is.get() != '-')
-				{
-					if (is.eof())
-						throw xml_invalid_syntax(is.tellg());
-				}
-				if (is.get() == '-' && is.get() == '-' && is.get() == '>')
-					break;
-				if (is.eof())
-					throw xml_invalid_syntax(is.tellg());
-			}
-			m_strTag = std::string("<comment>");
-			m_fIsComment = true;
-			return;
-		default:
-			if (is.eof())
-				throw xml_invalid_syntax(is.tellg());
-			if (xml::isspace(chCurrent))
-			{
-				chCurrent = skip_spaces(is);
-				if (is.eof())
-					throw xml_invalid_syntax(is.tellg());
-			}
-			std::tie(chCurrent, m_strTag) = get_rest(chCurrent, is);
-			if (is.eof() || m_strTag.empty())
-				throw xml_invalid_syntax(is.tellg());
-			while (chCurrent != '>')
-			{
-				if (xml::isspace(chCurrent))
-				{
-					chCurrent = skip_spaces(is);
-					if (is.eof())
-						throw xml_invalid_syntax(is.tellg());
-				}
-				if (chCurrent == '/')
-				{
-					if (skip_spaces(is) != '>')
-						throw xml_invalid_syntax(is.tellg());
-					m_fIsUnary = true;
-					return;
-				}
-				if (!xml::isprint(chCurrent))
-					throw xml_invalid_syntax(is.tellg());
-				std::string attribute, value;
-				std::tie(chCurrent, attribute) = get_rest(chCurrent, is);
-				if (is.eof() || attribute.empty())
-					throw xml_invalid_syntax(is.tellg());
-				if (xml::isspace(chCurrent))
-				{
-					chCurrent = skip_spaces(is);
-					if (is.eof())
-						throw xml_invalid_syntax(is.tellg());
-				}
-				if (chCurrent != '=')
-					throw xml_invalid_syntax(is.tellg());
-				chCurrent = skip_spaces(is);
-				if (is.eof())
-					throw xml_invalid_syntax(is.tellg());
-				if (chCurrent != '\"')
-					throw xml_invalid_syntax(is.tellg());
-				std::tie(chCurrent, value) = get_string_in_quotes(is);
-				if (xml::isspace(chCurrent))
-				{
-					chCurrent = skip_spaces(is);
-					if (is.eof())
-						throw xml_invalid_syntax(is.tellg());
-				}
-				if (!m_mpAttributes.emplace(attribute, value).second)
-					throw xml_attribute_already_specified(attribute, is.tellg());
-			}
-			return;
 		};
 	}
-	inline bool is_closing_tag() const
-	{
-		return m_fIsClosing;
-	}
-	inline bool is_unary_tag() const
-	{
-		return m_fIsUnary;
-	}
-	inline bool is_comment() const
-	{
-		return m_fIsComment;
-	}
-	//returns tag string
-	//for comment returns the "<comment>" string
-	inline const std::string& name() const
-	{
-		return m_strTag;
-	}
-	inline bool is_header() const
-	{
-		return m_fIsHeader;
-	}
-	template <class AttributeName>
-	const std::string& attribute(const AttributeName& attr) const
-	{
-		static const std::string strDefault;
-		auto it = m_mpAttributes.find(attr);
-		if (it == m_mpAttributes.end())
-			return strDefault;
-		return it->second;
-	}
-private:
-	static std::tuple<char, std::string> get_rest(char chFirst, std::istream& is)
-	{
-		std::ostringstream os;
-		char chCurrent = chFirst;
+	typedef Implementation::is_functor<&std::iswspace> isspace_t;
+	typedef Implementation::is_functor<&std::iswdigit> isdigit_t;
+	typedef Implementation::is_functor<&std::iswprint> isprint_t;
 
-		while (xml::isprint(chCurrent))
-		{
-			os << chCurrent;
-			chCurrent = is.get();
-			if (is.eof())
-				return std::make_tuple(char(), os.str());
-		}
-		return std::make_tuple(chCurrent, os.str());
-	}
-	static std::tuple<char, std::string> get_string_in_quotes(std::istream& is)
-	{
-		std::ostringstream os;
-		char chCurrent;
+	text_istream& skip_whitespace(text_istream& is);
 
-		while (true)
-		{
-			chCurrent = is.get();
-			if (is.eof())
-				throw xml_invalid_syntax(is.tellg());
-			if (chCurrent == '\"')
-				break;
-			os << chCurrent;
-		}
-		return std::make_tuple(is.get(), os.str());
-	}
-	static char skip_spaces(std::istream& is)
+	class tag
 	{
-		char chCurrent;
-		do
+		std::wstring m_strTag;
+		std::map<std::wstring, std::wstring> m_mpAttributes;
+		bool m_fIsComment = false;
+		bool m_fIsClosing = false;
+		bool m_fIsUnary = false;
+		bool m_fIsHeader = false;
+	public:
+		tag() = default;
+		//On input: "is" corresponds to a position before or equal to the position of the opening angle bracket '<'.
+		// If there are whitespace symbols before the bracket, they are skipped. If a non-whitespace symbol, that is not the left angle bracket,
+		// is encountered, xml_invalid_syntax exception is generated.
+		//On output "is" corresponds to the first symbol following the closing angle bracket '>'
+		//If a comment is encountered, on output "is" is associated with the first symbol after the "-->" sequence
+		explicit tag(text_istream& is);
+	private:
+		enum class nothrow_t {nothrow};
+	public:
+		static constexpr nothrow_t nothrow = nothrow_t::nothrow;
+		tag(text_istream& is, nothrow_t);
+		inline bool is_closing_tag() const
 		{
-			chCurrent = is.get();
-			if (is.eof())
-				return char();
-		}while (xml::isspace(chCurrent));
-		return chCurrent;
+			return m_fIsClosing;
+		}
+		inline bool is_unary_tag() const
+		{
+			return m_fIsUnary;
+		}
+		inline bool is_comment() const
+		{
+			return m_fIsComment;
+		}
+		//returns tag string
+		//for comment returns the "<comment>" string
+		inline const std::wstring& name() const
+		{
+			return m_strTag;
+		}
+		inline bool is_header() const
+		{
+			return m_fIsHeader;
+		}
+		template <class AttributeName>
+		const std::wstring& attribute(const AttributeName& attr) const
+		{
+			static const std::wstring strDefault;
+			auto it = m_mpAttributes.find(attr);
+			if (it == m_mpAttributes.end())
+				return strDefault;
+			return it->second;
+		}
+	private:
+		static std::wstring get_xml_word(text_istream& is);
+		static std::wstring get_string_in_quotes(text_istream& is); //quotes are extracted from the stream and discarded
+
+		class istream_state
+		{
+			std::wistream *m_pIs;
+			std::wistream::iostate m_prev;
+		public:
+			inline istream_state(std::wistream& is, std::wistream::iostate newmask = std::wistream::iostate()):m_pIs(&is), m_prev(m_pIs->exceptions()) 
+			{
+				m_pIs->exceptions(newmask);
+			}
+			inline ~istream_state()
+			{
+				m_pIs->exceptions(m_prev);
+			}
+		};
+	};
+
+	//is must correspond to a position to read from. Leading white spaces will be ignored. After the value is read, the following closing XML
+	//tag will be read, ignoring any preceding white space characters, and, if tag_name is not empty, will be checked against tag_name to match it.
+	template <class T>
+	auto get_tag_value(text_istream& is, const std::wstring_view& tag_name = std::string_view())
+	-> std::enable_if_t<std::is_arithmetic_v<T>, T>
+	{
+		T val;
+		is >> val;
+		auto cl_tag = tag(is);
+		if (!cl_tag.is_closing_tag() || (!tag_name.empty() && tag_name != cl_tag.name()))
+			throw improper_xml_tag(is.get_resource_locator(), cl_tag.name());
+		return val;
 	}
-};
+
+	template <class T>
+	auto get_tag_value(text_istream& is, const std::wstring_view& tag_name = std::wstring_view(), bool fDiscardBoundingSpaces = true)
+	-> std::enable_if_t<std::is_same_v<std::basic_string<text_istream::char_type, text_istream::traits_type, typename T::allocator_type>, T>, T>
+	{
+		std::basic_string<text_istream::char_type, text_istream::traits_type, typename T::allocator_type> str;
+		if (fDiscardBoundingSpaces)
+			xml::skip_whitespace(is);
+		text_istream::traits_type::int_type curr;
+		while ((curr = is.get()) != text_istream::traits_type::eof())
+		{
+			if (curr == text_istream::traits_type::to_int_type(L'<'))
+			{
+				is.putback(text_istream::traits_type::to_char_type(curr));
+				if (fDiscardBoundingSpaces)
+				{
+					auto it = std::find_if_not(str.rbegin(), str.rend(), xml::isspace_t());
+					str.erase(it.base(), str.end());
+				}
+				auto cl_tag = tag(is);
+				if (!cl_tag.is_closing_tag() || (!tag_name.empty() && tag_name != cl_tag.name()))
+					throw improper_xml_tag(is.get_resource_locator(), cl_tag.name());
+				return str;
+			}
+			str.append(1, text_istream::traits_type::to_char_type(curr));
+		}
+		throw xml_invalid_syntax(is.get_resource_locator());
+	}
+
+	template <class T>
+	auto get_tag_value(text_istream& is, const tag& xml_tag)
+	{
+		if (xml_tag.is_closing_tag() || xml_tag.is_unary_tag())
+			throw improper_xml_tag(is.get_resource_locator(), xml_tag.name());
+		return get_tag_value<T>(is, xml_tag.name());
+	}
+
+} //namespace xml
 
 #endif //IMPL_XML_PARSER_H_

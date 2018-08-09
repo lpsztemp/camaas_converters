@@ -6,6 +6,7 @@
 #include <fstream>
 #include <optional>
 #include <basedefs.h>
+#include <exceptions.h>
 #include <xml2bin.h>
 #include <impl_radio_hf_domain_xml2bin.h>
 #include <impl_arch_ac_domain_xml2bin.h>
@@ -13,58 +14,14 @@
 #include <binary_streams.h>
 #include <domain_converter.h>
 #include <hgt_optimizer.h>
-
-struct improper_xml_tag:std::invalid_argument
-{
-	improper_xml_tag():std::invalid_argument("Improper XML tag") {}
-	template <class TagName>
-	improper_xml_tag(const TagName& tag):std::invalid_argument(form_what(tag)) {}
-private:
-	template <class TagName>
-	static std::string form_what(const TagName& tag)
-	{
-		std::ostringstream ss;
-		ss << "Improper XML tag \"" << tag << "\"";
-		return ss.str();
-	}
-};
-
-struct invalid_xml_data:std::invalid_argument
-{
-	invalid_xml_data():std::invalid_argument("Invalid xml data") {}
-	invalid_xml_data(std::istream::pos_type pos):std::invalid_argument(form_what(pos)) {}
-	template <class WhatString>
-	invalid_xml_data(const WhatString& strWhat):std::invalid_argument(strWhat) {}
-
-private:
-	static std::string form_what(std::istream::pos_type pos)
-	{
-		std::ostringstream os;
-		os << "Invalid xml data at offset " << pos;
-		return os.str();
-	}
-};
-
-struct ambiguous_specification:std::invalid_argument
-{
-	ambiguous_specification():std::invalid_argument("Ambiguous model specification") {}
-	template <class XmlEntityString>
-	ambiguous_specification(const XmlEntityString& xml_entity):std::invalid_argument(form_what(xml_entity)) {}
-private:
-	template <class XmlEntityString>
-	static std::string form_what(const XmlEntityString& xml_entity)
-	{
-		std::ostringstream ss;
-		ss << "Ambiguous " << xml_entity;
-		return ss.str();
-	}
-};
+#include <text_streams.h>
+#include <codecvt>
+#include <locale>
 
 struct input_not_ready:std::invalid_argument
 {
 	input_not_ready():std::invalid_argument("Input model is not fully specified") {}
 };
-
 
 constexpr double unspecified_double()
 {
@@ -163,23 +120,57 @@ public:
 	conversion_state_impl(const conversion_state_impl&) = delete;
 	conversion_state_impl& operator=(const conversion_state_impl&) = delete;
 
-	void next_xml(std::istream& is)
+	void next_xml(text_istream& is)
 	{
 		using namespace std;
-		auto it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
-		if (it_is == istream_iterator<char>() || is.get() != '<')
-			throw xml_invalid_syntax(is.tellg());
-		auto tag = xml_tag(is);
+		xml::tag tag;
+		const std::pair<TextEncoding, std::wstring> pTestEncoding[] =
+		{
+			{TextEncoding::UTF8, std::wstring(L"UTF-8")},
+			{TextEncoding::UTF16LE, std::wstring(L"UTF-16LE")},
+			{TextEncoding::UTF16BE, std::wstring(L"UTF-16BE")},
+			{TextEncoding::Windows_1251, std::wstring(L"windows-1251")}
+		};
+		auto start_pos = is.tellg();
+		int cur_enc;
+		tag = xml::tag(is, xml::tag::nothrow);
+		if (is.fail())
+		{
+			cur_enc = 0;
+			do
+			{
+				is.clear();
+				is.seekg(start_pos);
+				if (is.fail())
+					throw xml_invalid_syntax();
+				if (!is.set_encoding(pTestEncoding[cur_enc++].first).fail())
+				{
+					tag = xml::tag(is, xml::tag::nothrow);
+					if (!is.fail())
+						break;
+				}
+			}while (cur_enc < int(sizeof(pTestEncoding) / sizeof(TextEncoding)));
+		}
+		while (tag.is_comment())
+			tag = xml::tag(is);
 		if (!tag.is_header())
-			throw invalid_xml_data("XML header is not specified");
-		if (tag.attribute("encoding") != "utf-8")
-			throw invalid_xml_data("XML encoding must be utf-8");
-		it_is = find_if_not(istream_iterator<char>(is), istream_iterator<char>(), xml::isspace);
-		if (it_is == istream_iterator<char>() || is.get() != '<')
-			throw xml_invalid_syntax(is.tellg());
-		tag = xml_tag(is);
-		if (tag.name() != "model")
-			throw improper_xml_tag(tag.name());
+			throw invalid_xml_model(L"XML header is not specified");
+		for (cur_enc = 0; cur_enc < int(sizeof(pTestEncoding) / sizeof(TextEncoding)); ++cur_enc)
+		{
+			const auto& enc1 = tag.attribute(L"encoding");
+			const auto& enc2 = pTestEncoding[cur_enc].second;
+			if (std::equal(std::begin(enc1), std::end(enc1), std::begin(enc2), std::end(enc2), 
+				[](wchar_t chl, wchar_t chr) -> bool {return std::towupper(chl) == std::towupper(chr);})) 
+			{
+				is.set_encoding(pTestEncoding[cur_enc].first);
+				break;
+			}
+		}
+		if (cur_enc == int(sizeof(pTestEncoding) / sizeof(TextEncoding)))
+			throw invalid_xml_model(is.get_resource_locator(), L"Unknown or unspecified XML encoding");
+		while ((tag = xml::tag(is)).is_comment()) continue;
+		if (tag.name() != L"model")
+			throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		this->convert_model(tag, is);
 	}
 	void next_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is)
@@ -232,298 +223,277 @@ public:
 
 
 private:
-	poly_data::face_data convert_face(const xml_tag& rTag, std::istream& is)
+	poly_data::face_data convert_face(const xml::tag& rTag, text_istream& is)
 	{
 		poly_data::face_data face;
 		while (true)
 		{
-			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
-			if (it_is == std::istream_iterator<char>())
-				throw xml_invalid_syntax(is.tellg());
-			if (*it_is != '<')
-				throw invalid_xml_data(is.tellg());
-			auto tag = xml_tag(is);
-			if (tag.name() == "domain")
+			xml::tag tag;
+			while ((tag = xml::tag(is)).is_comment()) continue;
+			if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto strDomain = tag.attribute("name");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto strDomain = encode_string(tag.attribute(L"name"));
 				if (strDomain.empty())
-					throw xml_attribute_not_found("name");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->face_domain_data(std::move(strDomain), is, os_buf);
+				m_pConv->face_domain_data(std::move(strDomain), tag, is, os_buf);
 				face.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
-			}else if (tag.name() == "vertex")
+			}else if (tag.name() == L"vertex")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				point_t v;
-				const auto& x = tag.attribute("x");
+				const auto& x = tag.attribute(L"x");
 				if (x.empty())
-					throw invalid_xml_data("Missing face vertex abscissa");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				v.x = std::stod(x);
-				const auto& y = tag.attribute("y");
+				const auto& y = tag.attribute(L"y");
 				if (y.empty())
-					throw invalid_xml_data("Missing face vertex ordinate");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				v.y = std::stod(y);
-				const auto& z = tag.attribute("z");
+				const auto& z = tag.attribute(L"z");
 				if (z.empty())
-					throw invalid_xml_data("Missing face vertex applicate");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				v.z = std::stod(z);
 				face.lstVertices.emplace_back(std::move(v));
-			}else if (tag.name() == "face" && tag.is_closing_tag())
+			}else if (tag.name() == L"face" && tag.is_closing_tag())
 				break;
 			else
-				throw improper_xml_tag(is.tellg());
+				throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		};
 		return face;
 	}
-	poly_data convert_poly(const xml_tag& rTag, std::istream& is)
+	poly_data convert_poly(const xml::tag& rTag, text_istream& is)
 	{
 		poly_data poly;
-		poly.name = rTag.attribute("name");
+		poly.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
-			if (it_is == std::istream_iterator<char>())
-				throw xml_invalid_syntax(is.tellg());
-			if (*it_is != '<')
-				throw invalid_xml_data(is.tellg());
-			auto tag = xml_tag(is);
-			if (tag.name() == "domain")
+			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type(L'<'))
+				throw xml_invalid_syntax(is.get_resource_locator());
+			auto tag = xml::tag(is);
+			if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto strDomain = tag.attribute("name");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto strDomain = encode_string(tag.attribute(L"name"));
 				if (strDomain.empty())
-					throw xml_attribute_not_found("name");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->poly_domain_data(std::move(strDomain), is, os_buf);
+				m_pConv->poly_domain_data(std::move(strDomain), tag, is, os_buf);
 				if (!poly.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
-					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of polyobject")
-						+ (poly.name.empty()?std::string():(std::string(" \"") + poly.name + std::string("\""))));
-			}else if (tag.name() == "face")
+					throw ambiguous_specification(is.get_resource_locator(), L"domain");
+			}else if (tag.name() == L"face")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				poly.lstFaces.emplace_back(convert_face(tag, is));
-			}else if (tag.name() == "poly" && tag.is_closing_tag())
+			}else if (tag.name() == L"poly" && tag.is_closing_tag())
 				break;
 			else
-				throw improper_xml_tag(is.tellg());
+				throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		};
 		return poly;
 	}
-	source_data convert_source(const xml_tag& rTag, std::istream& is)
+	source_data convert_source(const xml::tag& rTag, text_istream& is)
 	{
 		source_data source;
-		source.name = rTag.attribute("name");
+		source.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
-			if (it_is == std::istream_iterator<char>())
-				throw xml_invalid_syntax(is.tellg());
-			if (*it_is != '<')
-				throw invalid_xml_data(is.tellg());
-			auto tag = xml_tag(is);
-			if (tag.name() == "domain")
+			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type(L'<'))
+				throw xml_invalid_syntax(is.get_resource_locator());
+			auto tag = xml::tag(is);
+			if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto strDomain = tag.attribute("name");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto strDomain = encode_string(tag.attribute(L"name"));
 				if (strDomain.empty())
-					throw xml_attribute_not_found("name");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->source_domain_data(std::move(strDomain), is, os_buf);
+				m_pConv->source_domain_data(std::move(strDomain), tag, is, os_buf);
 				if (!source.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
-					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of sourceobject")
-						+ (source.name.empty()?std::string():(std::string(" \"") + source.name + std::string("\""))));
-			}else if (tag.name() == "position")
+					throw ambiguous_specification(is.get_resource_locator(), L"domain");
+			}else if (tag.name() == L"position")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				source.pos.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				source.pos.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				source.pos.z = std::stod(coord);
-			}else if (tag.name() == "direction")
+			}else if (tag.name() == L"direction")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				source.dir.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				source.dir.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				source.dir.z = std::stod(coord);
-			}else if (tag.name() == "top")
+			}else if (tag.name() == L"top")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				source.top.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				source.top.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				source.top.z = std::stod(coord);
-			}else if (tag.name() == "sourceobject" && tag.is_closing_tag())
+			}else if (tag.name() == L"sourceobject" && tag.is_closing_tag())
 				break;
 			else
-				throw improper_xml_tag(is.tellg());
+				throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		};
 		return source;
 	}
-	plain_data convert_plain(const xml_tag& rTag, std::istream& is)
+	plain_data convert_plain(const xml::tag& rTag, text_istream& is)
 	{
 		plain_data plain;
-		plain.name = rTag.attribute("name");
+		plain.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
-			if (it_is == std::istream_iterator<char>())
-				throw xml_invalid_syntax(is.tellg());
-			if (*it_is != '<')
-				throw invalid_xml_data(is.tellg());
-			auto tag = xml_tag(is);
-			if (tag.name() == "domain")
+			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type('<'))
+				throw xml_invalid_syntax(is.get_resource_locator());
+			auto tag = xml::tag(is);
+			if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto strDomain = tag.attribute("name");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto strDomain = encode_string(tag.attribute(L"name"));
 				if (strDomain.empty())
-					throw xml_attribute_not_found("name");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->plain_domain_data(std::move(strDomain), is, os_buf);
+				m_pConv->plain_domain_data(std::move(strDomain), tag, is, os_buf);
 				if (!plain.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
-					throw ambiguous_specification(std::string("Domain \"") + strDomain + std::string("\" of sourceobject")
-						+ (plain.name.empty()?std::string():(std::string(" \"") + plain.name + std::string("\""))));
-			}else if (tag.name() == "position")
+					throw ambiguous_specification(is.get_resource_locator(), L"domain");
+			}else if (tag.name() == L"position")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				plain.pos.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				plain.pos.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				plain.pos.z = std::stod(coord);
-			}else if (tag.name() == "v1")
+			}else if (tag.name() == L"v1")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				plain.v1.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				plain.v1.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				plain.v1.z = std::stod(coord);
-			}else if (tag.name() == "v2")
+			}else if (tag.name() == L"v2")
 			{
 				if (!tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto coord = tag.attribute("x");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto coord = tag.attribute(L"x");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"x");
 				plain.v2.x = std::stod(coord);
-				coord = tag.attribute("y");
+				coord = tag.attribute(L"y");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"y");
 				plain.v2.y = std::stod(coord);
-				coord = tag.attribute("z");
+				coord = tag.attribute(L"z");
 				if (coord.empty())
-					throw invalid_xml_data(is.tellg());
+					throw xml_attribute_not_found(is.get_resource_locator(), L"z");
 				plain.v2.z = std::stod(coord);
-			}else if (tag.name() == "plainobject" && tag.is_closing_tag())
+			}else if (tag.name() == L"plainobject" && tag.is_closing_tag())
 				break;
 			else
-				throw improper_xml_tag(is.tellg());
+				throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		};
 		return plain;
 	}
-	void convert_model(const xml_tag& rModelTag, std::istream& is)
+	void convert_model(const xml::tag& rModelTag, text_istream& is)
 	{
-		auto strAttr = rModelTag.attribute("cx");
+		auto strAttr = rModelTag.attribute(L"cx");
 		if (!strAttr.empty())
 		{
 			if (is_specified(m_size.x))
-				throw ambiguous_specification("Model attribute \"cx\"");
+				throw ambiguous_specification(is.get_resource_locator(), L"cx");
 			m_size.x = std::stod(strAttr);
 		}
-		strAttr = rModelTag.attribute("cy");
+		strAttr = rModelTag.attribute(L"cy");
 		if (!strAttr.empty())
 		{
 			if (is_specified(m_size.y))
-				throw ambiguous_specification("Model attribute \"cy\"");
+				throw ambiguous_specification(is.get_resource_locator(), L"cy");
 			m_size.y = std::stod(strAttr);
 		}
-		strAttr = rModelTag.attribute("cz");
+		strAttr = rModelTag.attribute(L"cz");
 		if (!strAttr.empty())
 		{
 			if (is_specified(m_size.z))
-				throw ambiguous_specification("Model attribute \"cz\"");
+				throw ambiguous_specification(is.get_resource_locator(), L"cz");
 			m_size.z = std::stod(strAttr);
 		}
-		strAttr = rModelTag.attribute("name");
+		strAttr = rModelTag.attribute(L"name");
 		if (!strAttr.empty())
 		{
 			if (!m_strModelName.empty())
-				throw ambiguous_specification("Model attribute \"name\"");
-			m_strModelName = std::move(strAttr);
+				throw ambiguous_specification(is.get_resource_locator(), L"name");
+			m_strModelName = encode_string(strAttr);
 		}
 		while (true)
 		{
-			auto it_is = find_if_not(std::istream_iterator<char>(is), std::istream_iterator<char>(), xml::isspace);
-			if (it_is == std::istream_iterator<char>())
-				throw xml_invalid_syntax(is.tellg());
-			if (*it_is != '<')
-				throw invalid_xml_data(is.tellg());
-			auto tag = xml_tag(is);
-			if (tag.name() == "domain")
+			auto tag = xml::tag(is);
+			if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
-				auto strDomain = tag.attribute("name");
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
+				auto strDomain = encode_string(tag.attribute(L"name"));
 				if (strDomain.empty())
-					throw xml_attribute_not_found("name");
+					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->model_domain_data(std::move(strDomain), is, os_buf);
+				m_pConv->model_domain_data(std::move(strDomain), tag, is, os_buf);
 				m_mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
-			}else if (tag.name() == "polyobject")
+			}else if (tag.name() == L"polyobject")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				auto poly = convert_poly(tag, is);
 				if (poly.name.empty())
 					m_polyUnnamedList.emplace_back(std::move(poly));
@@ -531,12 +501,12 @@ private:
 				{
 					auto name = poly.name;
 					if (!m_polyNamedMap.emplace(std::move(name), std::move(poly)).second)
-						throw ambiguous_specification(std::string("polyobject ") + name);
+						throw ambiguous_specification(is.get_resource_locator(), tag.name());
 				}
-			}else if (tag.name() == "sourceobject")
+			}else if (tag.name() == L"sourceobject")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				auto source = convert_source(tag, is);
 				if (source.name.empty())
 					m_srcUnnamedList.emplace_back(std::move(source));
@@ -544,12 +514,12 @@ private:
 				{
 					auto name = source.name;
 					if (!m_srcNamedMap.emplace(std::move(name), std::move(source)).second)
-						throw ambiguous_specification(std::string("sourceobject ") + name);
+						throw ambiguous_specification(is.get_resource_locator(), tag.name());
 				}
-			}else if (tag.name() =="plainobject")
+			}else if (tag.name() == L"plainobject")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
-					throw invalid_xml_data(is.tellg());
+					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				auto plain = convert_plain(tag, is);
 				if (plain.name.empty())
 					m_plainUnnamedList.emplace_back(std::move(plain));
@@ -557,12 +527,12 @@ private:
 				{
 					auto name = plain.name;
 					if (!m_plainNamedMap.emplace(std::move(name), std::move(plain)).second)
-						throw ambiguous_specification(std::string("plainobject ") + name);
+						throw ambiguous_specification(is.get_resource_locator(), tag.name());
 				}
-			}else if (tag.name() == "model" && tag.is_closing_tag())
+			}else if (tag.name() == L"model" && tag.is_closing_tag())
 				break;
 			else
-				throw improper_xml_tag(is.tellg());
+				throw improper_xml_tag(is.get_resource_locator(), tag.name());
 		};
 	}
 	template <class T>
@@ -673,7 +643,7 @@ namespace Implementation
 	{
 		return std::unique_ptr<conversion_state>(new conversion_state_impl(domain, os));
 	}
-	void xml2bin_next_xml(const std::unique_ptr<conversion_state>& state, std::istream& is)
+	void xml2bin_next_xml(const std::unique_ptr<conversion_state>& state, text_istream& is)
 	{
 		static_cast<conversion_state_impl*>(state.get())->next_xml(is);
 	}

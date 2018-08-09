@@ -8,6 +8,7 @@
 #include <fstream>
 #include <stack>
 #include <binary_streams.h>
+#include <text_streams.h>
 
 #ifndef XML2BIN_H_
 #define XML2BIN_H_
@@ -27,7 +28,7 @@ namespace Implementation
 {
 	struct conversion_state {virtual inline ~conversion_state() {}};
 	std::unique_ptr<conversion_state> xml2bin_set(const std::string& domain, binary_ostream& os);
-	void xml2bin_next_xml(const std::unique_ptr<conversion_state>& state, std::istream& is);
+	void xml2bin_next_xml(const std::unique_ptr<conversion_state>& state, text_istream& is);
 	void xml2bin_next_hgt(const std::unique_ptr<conversion_state>& state, const HGT_RESOLUTION_DATA& resolution, std::istream& is);
 	void xml2bin_finalize(const std::unique_ptr<conversion_state>& state);
 
@@ -43,13 +44,15 @@ namespace Implementation
 	}
 	template <class T>
 	struct is_input_stream:std::is_base_of<std::istream, decltype(get_input_stream(std::declval<T>()))> {};
+	template <class T>
+	struct is_text_input_stream:std::is_base_of<text_istream, decltype(get_input_stream(std::declval<T>()))> {};
 }
 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
 auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, binary_ostream& os)
 	-> std::enable_if_t<
-		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
-		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
+		Implementation::is_text_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
+		Implementation::is_text_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
 	>
 {
 	using namespace Implementation;
@@ -62,8 +65,8 @@ auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
 auto hgtxml2bin(const DomainString& strDomain, const HGT_RESOLUTION_DATA& resolution, std::istream& isHgt, InputIteratorXmlBegin xml_is_begin, InputIteratorXmlEnd xml_is_end, binary_ostream& os)
 	-> std::enable_if_t<
-		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
-		Implementation::is_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
+		Implementation::is_text_input_stream<typename std::iterator_traits<InputIteratorXmlBegin>::value_type>::value &&
+		Implementation::is_text_input_stream<typename std::iterator_traits<InputIteratorXmlEnd>::value_type>::value
 	>
 {
 	using namespace Implementation;

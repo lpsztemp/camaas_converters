@@ -5,6 +5,9 @@
 #ifndef XML2BIN_BASEDEFS_H
 #define XML2BIN_BASEDEFS_H
 
+template <class T>
+constexpr auto pi = T(3.141592653589793238);
+
 typedef enum _tag_Units:std::uint32_t
 {
 	CHU_MILLIMETERS,

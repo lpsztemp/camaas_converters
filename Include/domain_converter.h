@@ -8,6 +8,7 @@
 #include <optional>
 #include <basedefs.h>
 #include <binary_streams.h>
+#include <impl_xml_parser.h>
 
 #ifndef XML2BIN_DOMAIN_CONVERTER_H_
 #define XML2BIN_DOMAIN_CONVERTER_H_
@@ -43,11 +44,11 @@ typedef std::map<std::string, domain_datum> domain_data_map;
 
 struct IDomainConverter
 {
-	virtual void model_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os) = 0;
-	virtual void poly_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os) = 0;
-	virtual void face_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os) = 0;
-	virtual void source_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os) = 0;
-	virtual void plain_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os) = 0;
+	virtual void model_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual void poly_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual void face_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual void source_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual void plain_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
 
 	virtual std::optional<domain_datum> constant_face_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const = 0;
 	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const = 0;
@@ -69,11 +70,11 @@ struct
 	static const std::string& domain_name();
 
 	//OPTIONAL
-	void model_domain_data(is, os);
-	void poly_domain_data(is, os);
-	void face_domain_data(is, os);
-	void source_domain_data(is, os);
-	void plain_domain_data(is, os);
+	void model_domain_data(tag, is, os);
+	void poly_domain_data(tag, is, os);
+	void face_domain_data(tag, is, os);
+	void source_domain_data(tag, is, os);
+	void plain_domain_data(tag, is, os);
 
 	//OPTIONAL-HGT
 	void constant_face_domain_data(ConstantDomainDataId id, binary_ostream& os);
@@ -81,18 +82,18 @@ struct
 };
 */
 
-void skip_xml_domain_data(std::istream& is);
+void skip_xml_domain_data(text_istream& is);
 
 template <class T, class = void> struct has_model_domain_data:std::false_type {};
-template <class T> struct has_model_domain_data<T, std::void_t<decltype(std::declval<T>().model_domain_data(std::declval<std::istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
+template <class T> struct has_model_domain_data<T, std::void_t<decltype(std::declval<T>().model_domain_data(std::declval<const xml::tag&>(), std::declval<text_istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_poly_domain_data:std::false_type {};
-template <class T> struct has_poly_domain_data<T, std::void_t<decltype(std::declval<T>().poly_domain_data(std::declval<std::istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
+template <class T> struct has_poly_domain_data<T, std::void_t<decltype(std::declval<T>().poly_domain_data(std::declval<const xml::tag&>(), std::declval<text_istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_face_domain_data:std::false_type {};
-template <class T> struct has_face_domain_data<T, std::void_t<decltype(std::declval<T>().face_domain_data(std::declval<std::istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
+template <class T> struct has_face_domain_data<T, std::void_t<decltype(std::declval<T>().face_domain_data(std::declval<const xml::tag&>(), std::declval<text_istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_source_domain_data:std::false_type {};
-template <class T> struct has_source_domain_data<T, std::void_t<decltype(std::declval<T>().source_domain_data(std::declval<std::istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
+template <class T> struct has_source_domain_data<T, std::void_t<decltype(std::declval<T>().source_domain_data(std::declval<const xml::tag&>(), std::declval<text_istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_plain_domain_data:std::false_type {};
-template <class T> struct has_plain_domain_data<T, std::void_t<decltype(std::declval<T>().plain_domain_data(std::declval<std::istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
+template <class T> struct has_plain_domain_data<T, std::void_t<decltype(std::declval<T>().plain_domain_data(std::declval<const xml::tag&>(), std::declval<text_istream&>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_constant_face_domain_data:std::false_type {};
 template <class T> struct has_constant_face_domain_data<T, std::void_t<decltype(std::declval<T>().constant_face_domain_data(std::declval<ConstantDomainDataId>(), std::declval<binary_ostream&>()))>>:std::true_type {};
 template <class T, class = void> struct has_constant_poly_domain_data:std::false_type {};
@@ -104,55 +105,55 @@ template <class T> struct has_constant_plain_domain_data<T, std::void_t<decltype
 
 
 template <class Convert>
-auto convert_model_domain_data(Convert& conv, std::istream& is, binary_ostream& os) -> std::enable_if_t<has_model_domain_data<Convert&>::value>
+auto convert_model_domain_data(Convert& conv, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) -> std::enable_if_t<has_model_domain_data<Convert&>::value>
 {
-	return conv.model_domain_data(is, os);
+	return conv.model_domain_data(domain_opening_tag, is, os);
 }
 template <class Convert>
-auto convert_model_domain_data(Convert&, std::istream& is, binary_ostream&) -> std::enable_if_t<!has_model_domain_data<Convert&>::value>
-{
-	skip_xml_domain_data(is);
-}
-template <class Convert>
-auto convert_poly_domain_data(Convert& conv, std::istream& is, binary_ostream& os) -> std::enable_if_t<has_poly_domain_data<Convert&>::value>
-{
-	return conv.poly_domain_data(is, os);
-}
-template <class Convert>
-auto convert_poly_domain_data(Convert&, std::istream& is, binary_ostream&) -> std::enable_if_t<!has_poly_domain_data<Convert&>::value>
+auto convert_model_domain_data(Convert&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream&) -> std::enable_if_t<!has_model_domain_data<Convert&>::value>
 {
 	skip_xml_domain_data(is);
 }
-
 template <class Convert>
-auto convert_face_domain_data(Convert& conv, std::istream& is, binary_ostream& os) -> std::enable_if_t<has_face_domain_data<Convert&>::value>
+auto convert_poly_domain_data(Convert& conv, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) -> std::enable_if_t<has_poly_domain_data<Convert&>::value>
 {
-	return conv.face_domain_data(is, os);
+	return conv.poly_domain_data(domain_opening_tag, is, os);
 }
 template <class Convert>
-auto convert_face_domain_data(Convert&, std::istream& is, binary_ostream&) -> std::enable_if_t<!has_face_domain_data<Convert&>::value>
+auto convert_poly_domain_data(Convert&, const xml::tag&, text_istream& is, binary_ostream&) -> std::enable_if_t<!has_poly_domain_data<Convert&>::value>
 {
 	skip_xml_domain_data(is);
 }
 
 template <class Convert>
-auto convert_source_domain_data(Convert& conv, std::istream& is, binary_ostream& os) -> std::enable_if_t<has_source_domain_data<Convert&>::value>
+auto convert_face_domain_data(Convert& conv, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) -> std::enable_if_t<has_face_domain_data<Convert&>::value>
 {
-	return conv.source_domain_data(is, os);
+	return conv.face_domain_data(domain_opening_tag, is, os);
 }
 template <class Convert>
-auto convert_source_domain_data(Convert&, std::istream& is, binary_ostream&) -> std::enable_if_t<!has_source_domain_data<Convert&>::value>
+auto convert_face_domain_data(Convert&, const xml::tag&, text_istream& is, binary_ostream&) -> std::enable_if_t<!has_face_domain_data<Convert&>::value>
 {
 	skip_xml_domain_data(is);
 }
 
 template <class Convert>
-auto convert_plain_domain_data(Convert& conv, std::istream& is, binary_ostream& os) -> std::enable_if_t<has_plain_domain_data<Convert&>::value>
+auto convert_source_domain_data(Convert& conv, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) -> std::enable_if_t<has_source_domain_data<Convert&>::value>
 {
-	return conv.plain_domain_data(is, os);
+	return conv.source_domain_data(domain_opening_tag, is, os);
 }
 template <class Convert>
-auto convert_plain_domain_data(Convert&, std::istream& is, binary_ostream&) -> std::enable_if_t<!has_plain_domain_data<Convert&>::value>
+auto convert_source_domain_data(Convert&, const xml::tag&, text_istream& is, binary_ostream&) -> std::enable_if_t<!has_source_domain_data<Convert&>::value>
+{
+	skip_xml_domain_data(is);
+}
+
+template <class Convert>
+auto convert_plain_domain_data(Convert& conv, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) -> std::enable_if_t<has_plain_domain_data<Convert&>::value>
+{
+	return conv.plain_domain_data(domain_opening_tag, is, os);
+}
+template <class Convert>
+auto convert_plain_domain_data(Convert&, const xml::tag&, text_istream& is, binary_ostream&) -> std::enable_if_t<!has_plain_domain_data<Convert&>::value>
 {
 	skip_xml_domain_data(is);
 }
@@ -208,25 +209,25 @@ auto write_constant_plain_domain_data(Convert&, ConstantDomainDataId, binary_ost
 template <class Converter>
 struct ConverterImpl:IDomainConverter
 {
-	virtual void model_domain_data(const std::string_view&, std::istream& is, binary_ostream& os)
+	virtual void model_domain_data(const std::string_view&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
-		convert_model_domain_data(m_conv, is, os);
+		convert_model_domain_data(m_conv, domain_opening_tag, is, os);
 	}
-	virtual void poly_domain_data(const std::string_view&, std::istream& is, binary_ostream& os)
+	virtual void poly_domain_data(const std::string_view&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
-		convert_poly_domain_data(m_conv, is, os);
+		convert_poly_domain_data(m_conv, domain_opening_tag, is, os);
 	}
-	virtual void face_domain_data(const std::string_view&, std::istream& is, binary_ostream& os)
+	virtual void face_domain_data(const std::string_view&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
-		convert_face_domain_data(m_conv, is, os);
+		convert_face_domain_data(m_conv, domain_opening_tag, is, os);
 	}
-	virtual void source_domain_data(const std::string_view&, std::istream& is, binary_ostream& os)
+	virtual void source_domain_data(const std::string_view&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
-		convert_source_domain_data(m_conv, is, os);
+		convert_source_domain_data(m_conv, domain_opening_tag, is, os);
 	}
-	virtual void plain_domain_data(const std::string_view&, std::istream& is, binary_ostream& os)
+	virtual void plain_domain_data(const std::string_view&, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
-		convert_plain_domain_data(m_conv, is, os);
+		convert_plain_domain_data(m_conv, domain_opening_tag, is, os);
 	}
 	virtual std::optional<domain_datum> constant_face_domain_data(const std::string_view&, ConstantDomainDataId id) const
 	{
@@ -288,43 +289,43 @@ struct generalized_converter:IDomainConverter
 	template <class NameConverterTuple>
 	generalized_converter(NameConverterTuple&& name_conv_tpl):m_mpConv(create_map(std::forward<NameConverterTuple>(name_conv_tpl)))
 	{}
-	virtual void model_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os)
+	virtual void model_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
-			convert_model_domain_data(*itConv->second, is, os);
+			convert_model_domain_data(*itConv->second, domain_opening_tag, is, os);
 		else
 			skip_xml_domain_data(is);
 	}
-	virtual void poly_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os)
+	virtual void poly_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
-			convert_poly_domain_data(*itConv->second, is, os);
+			convert_poly_domain_data(*itConv->second, domain_opening_tag, is, os);
 		else
 			skip_xml_domain_data(is);
 	}
-	virtual void face_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os)
+	virtual void face_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
-			convert_face_domain_data(*itConv->second, is, os);
+			convert_face_domain_data(*itConv->second, domain_opening_tag, is, os);
 		else
 			skip_xml_domain_data(is);
 	}
-	virtual void source_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os)
+	virtual void source_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
-			convert_source_domain_data(*itConv->second, is, os);
+			convert_source_domain_data(*itConv->second, domain_opening_tag, is, os);
 		else
 			skip_xml_domain_data(is);
 	}
-	virtual void plain_domain_data(const std::string_view& DomainName, std::istream& is, binary_ostream& os)
+	virtual void plain_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
-			convert_plain_domain_data(*itConv->second, is, os);
+			convert_plain_domain_data(*itConv->second, domain_opening_tag, is, os);
 		else
 			skip_xml_domain_data(is);
 	}

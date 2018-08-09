@@ -1,4 +1,6 @@
 #include <binary_streams.h>
+#include <locale>
+#include <codecvt>
 
 unsigned temp_path::suffix = unsigned();
 
@@ -107,4 +109,10 @@ binary_fostream& binary_fostream::seekp(std::ptrdiff_t off, std::ios_base::seekd
 {
 	m_os.seekp(off, dir);
 	return *this;
+}
+
+std::string encode_string(const std::wstring& str)
+{
+	typedef std::codecvt_utf8<wchar_t> codecvt;
+	return std::wstring_convert<codecvt>().to_bytes(str);
 }

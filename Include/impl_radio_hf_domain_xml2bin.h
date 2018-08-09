@@ -1,6 +1,9 @@
+#include <list>
+#include <algorithm>
 #include <basedefs.h>
 #include <binary_streams.h>
-#include "impl_xml_parser.h"
+#include <exceptions.h>
+#include <impl_xml_parser.h>
 
 #ifndef IMPL_RADIO_HF_DOMAIN_XML2BIN_H_
 #define IMPL_RADIO_HF_DOMAIN_XML2BIN_H_
@@ -11,9 +14,9 @@ struct radio_hf_convert
 	static const std::string& domain_name();
 
 	//NON MANDATORY METHODS
-	void model_domain_data(std::istream& is, binary_ostream& os);
-	void poly_domain_data(std::istream& is, binary_ostream& os);
-	void source_domain_data(std::istream& is, binary_ostream& os);
+	void model_domain_data(text_istream& is, binary_ostream& os);
+	void poly_domain_data(text_istream& is, binary_ostream& os);
+	void source_domain_data(text_istream& is, binary_ostream& os);
 
 	//hgt
 	//must be thread safe

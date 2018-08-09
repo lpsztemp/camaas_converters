@@ -47,6 +47,9 @@
     <ClInclude Include="..\Include\exceptions.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
+    <ClInclude Include="..\Include\text_streams.h">
+      <Filter>Header Files\Common\impl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\xml2bin.cpp">
@@ -62,6 +65,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="domain_converter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="radio_hf_domain_xml2bin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\text_streams.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\exceptions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="arch_ac_domain_xml2bin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xml_parser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

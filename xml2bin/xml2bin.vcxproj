@@ -156,14 +156,20 @@
     <ClInclude Include="..\Include\binary_streams.h" />
     <ClInclude Include="..\Include\impl_radio_hf_domain_xml2bin.h" />
     <ClInclude Include="..\Include\impl_xml_parser.h" />
+    <ClInclude Include="..\Include\text_streams.h" />
     <ClInclude Include="..\Include\xml2bin.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\exceptions.cpp" />
     <ClCompile Include="..\src\face.cpp" />
     <ClCompile Include="..\src\hgt_optimizer.cpp" />
     <ClCompile Include="..\src\binary_streams.cpp" />
+    <ClCompile Include="..\src\text_streams.cpp" />
     <ClCompile Include="..\src\xml2bin.cpp" />
+    <ClCompile Include="arch_ac_domain_xml2bin.cpp" />
     <ClCompile Include="domain_converter.cpp" />
+    <ClCompile Include="radio_hf_domain_xml2bin.cpp" />
+    <ClCompile Include="xml_parser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

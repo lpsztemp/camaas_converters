@@ -1,12 +1,17 @@
-#pragma warning (disable:4996)
+#if !defined(__GNUC__) || __GNUC__ > 7
+#define CPP17_FILESYSTEM 1
+#endif
 #include <cstdint>
 #include <vector>
 #include <list>
 #include <memory>
 #include <type_traits>
 #include <algorithm>
-#include <filesystem>
 #include <fstream>
+#include <string_view>
+#if CPP17_FILESYSTEM
+#include <filesystem>
+#endif
 
 #ifndef IMPL_BUF_OSTREAM_H
 #define IMPL_BUF_OSTREAM_H
@@ -170,5 +175,7 @@ private:
 		return path;
 	}
 };
+
+std::string encode_string(const std::wstring& str);
 
 #endif // IMPL_BUF_OSTREAM_H
