@@ -2,7 +2,7 @@
 #include <type_traits>
 
 template <class T>
-auto read_as(std::istream& is) -> std::enable_if_t<std::is_pod_v<T>, T>
+static auto read_as(std::istream& is) -> std::enable_if_t<std::is_pod_v<T>, T>
 {
 	T val;
 	is.read(reinterpret_cast<char*>(std::addressof(val)), sizeof(T));
@@ -10,7 +10,7 @@ auto read_as(std::istream& is) -> std::enable_if_t<std::is_pod_v<T>, T>
 }
 
 template <class T>
-auto read_buf(std::istream& is, T* buf, std::size_t cBuf) -> std::enable_if_t<std::is_void_v<T> || std::is_pod_v<T>>
+static auto read_buf(std::istream& is, T* buf, std::size_t cBuf) -> std::enable_if_t<std::is_void_v<T> || std::is_pod_v<T>>
 {
 	is.read(reinterpret_cast<char*>(buf), cBuf * sizeof(T));
 }

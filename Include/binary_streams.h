@@ -1,6 +1,4 @@
-#if !defined(__GNUC__) || __GNUC__ > 7
-#define CPP17_FILESYSTEM 1
-#endif
+#include <basedefs.h>
 #include <cstdint>
 #include <vector>
 #include <list>
@@ -9,7 +7,7 @@
 #include <algorithm>
 #include <fstream>
 #include <string_view>
-#if CPP17_FILESYSTEM
+#if CPP17_FILESYSTEM_SUPPORT
 #include <filesystem>
 #endif
 
@@ -144,9 +142,11 @@ struct binary_fostream:binary_ostream
 	inline explicit binary_fostream(const std::string_view& path):m_os(path, std::ios_base::out | std::ios_base::binary)
 	{
 	}
+#if CPP17_FILESYSTEM_SUPPORT
 	inline explicit binary_fostream(const std::filesystem::path& path):m_os(path, std::ios_base::out | std::ios_base::binary)
 	{
 	}
+#endif //CPP17_FILESYSTEM_SUPPORT
 	virtual binary_fostream& write(const void* pInput, std::size_t cbHowMany);
 	virtual pos_type tellp() const;
 	virtual binary_fostream& seekp(pos_type pos);
@@ -155,6 +155,7 @@ private:
 	mutable std::ofstream m_os; //mutable because of tellp
 };
 
+#if CPP17_FILESYSTEM_SUPPORT
 struct temp_path:std::filesystem::path
 {
 	inline temp_path():std::filesystem::path(get_file_path()) {}
@@ -175,6 +176,7 @@ private:
 		return path;
 	}
 };
+#endif //CPP17_FILESYSTEM_SUPPORT
 
 std::string encode_string(const std::wstring& str);
 

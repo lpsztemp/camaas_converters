@@ -148,14 +148,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\basedefs.h" />
-    <ClInclude Include="..\Include\bin2text.h" />
     <ClInclude Include="..\Include\domain_converter.h" />
     <ClInclude Include="..\Include\exceptions.h" />
     <ClInclude Include="..\Include\hgt_optimizer.h" />
-    <ClInclude Include="..\Include\impl_arch_ac_domain_xml2bin.h" />
+    <ClInclude Include="..\Include\arch_ac_domain_xml2bin.h" />
     <ClInclude Include="..\Include\binary_streams.h" />
-    <ClInclude Include="..\Include\impl_radio_hf_domain_xml2bin.h" />
-    <ClInclude Include="..\Include\impl_xml_parser.h" />
+    <ClInclude Include="..\Include\radio_hf_domain_xml2bin.h" />
+    <ClInclude Include="..\Include\xml_parser.h" />
     <ClInclude Include="..\Include\text_streams.h" />
     <ClInclude Include="..\Include\xml2bin.h" />
   </ItemGroup>

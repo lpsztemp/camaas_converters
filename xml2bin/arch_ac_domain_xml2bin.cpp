@@ -1,4 +1,4 @@
-#include <impl_arch_ac_domain_xml2bin.h>
+#include <arch_ac_domain_xml2bin.h>
 #include <map>
 #include <tuple>
 #include <memory>

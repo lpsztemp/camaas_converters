@@ -7,7 +7,10 @@
 
 //returns a number of faces obtained
 unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution);
+
+#if CPP17_FILESYSTEM_SUPPORT
 unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::filesystem::path output);
+#endif //CPP17_FILESYSTEM_SUPPORT
 
 struct HGT_CONVERSION_STATS
 {

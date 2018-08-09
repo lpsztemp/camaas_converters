@@ -2,21 +2,23 @@
 #include <iterator>
 #include <functional>
 #include <list>
-#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <basedefs.h>
 #include <exceptions.h>
 #include <xml2bin.h>
-#include <impl_radio_hf_domain_xml2bin.h>
-#include <impl_arch_ac_domain_xml2bin.h>
-#include <impl_xml_parser.h>
+#include <radio_hf_domain_xml2bin.h>
+#include <arch_ac_domain_xml2bin.h>
+#include <xml_parser.h>
 #include <binary_streams.h>
 #include <domain_converter.h>
 #include <hgt_optimizer.h>
 #include <text_streams.h>
 #include <codecvt>
 #include <locale>
+#if CPP17_FILESYSTEM_SUPPORT
+#include <filesystem>
+#endif
 
 struct input_not_ready:std::invalid_argument
 {

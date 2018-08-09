@@ -8,6 +8,10 @@
 template <class T>
 constexpr auto pi = T(3.141592653589793238);
 
+#if !defined(__GNUC__) || __GNUC__ > 7
+#define CPP17_FILESYSTEM_SUPPORT 1
+#endif
+
 typedef enum _tag_Units:std::uint32_t
 {
 	CHU_MILLIMETERS,

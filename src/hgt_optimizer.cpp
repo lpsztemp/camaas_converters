@@ -1248,6 +1248,7 @@ unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput
 	return face_count;
 }
 
+#if CPP17_FILESYSTEM_SUPPORT
 unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::filesystem::path output)
 {
 	auto os = binary_fostream(output);
@@ -1275,6 +1276,7 @@ unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::files
 		throw std::invalid_argument("Unexpected HGT file size");
 	};
 }
+#endif //CPP17_FILESYSTEM_SUPPORT
 
 struct conversion_result
 {

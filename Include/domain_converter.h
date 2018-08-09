@@ -8,7 +8,7 @@
 #include <optional>
 #include <basedefs.h>
 #include <binary_streams.h>
-#include <impl_xml_parser.h>
+#include <xml_parser.h>
 
 #ifndef XML2BIN_DOMAIN_CONVERTER_H_
 #define XML2BIN_DOMAIN_CONVERTER_H_

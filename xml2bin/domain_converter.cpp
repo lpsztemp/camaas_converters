@@ -1,5 +1,5 @@
 #include <domain_converter.h>
-#include <impl_xml_parser.h>
+#include <xml_parser.h>
 #include <exceptions.h>
 
 void skip_xml_domain_data(text_istream& is) //"is" is associated with the first character after the closing '>'

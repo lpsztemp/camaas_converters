@@ -12,56 +12,47 @@
     <Filter Include="Header Files\Common">
       <UniqueIdentifier>{280556a9-7ceb-43aa-870a-014b9d27d535}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Common\impl">
-      <UniqueIdentifier>{04833575-ebd8-46ac-a8e5-426bf1fbce91}</UniqueIdentifier>
+    <Filter Include="Source Files\Common">
+      <UniqueIdentifier>{c180885f-6f50-41c8-ade4-2903f3b16ea1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Include\bin2text.h">
-      <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\xml2bin.h">
-      <Filter>Header Files\Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\impl_arch_ac_domain_xml2bin.h">
-      <Filter>Header Files\Common\impl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\impl_radio_hf_domain_xml2bin.h">
-      <Filter>Header Files\Common\impl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\impl_xml_parser.h">
-      <Filter>Header Files\Common\impl</Filter>
-    </ClInclude>
     <ClInclude Include="..\Include\basedefs.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\hgt_optimizer.h">
-      <Filter>Header Files\Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\Include\binary_streams.h">
-      <Filter>Header Files\Common\impl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Include\domain_converter.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\exceptions.h">
+    <ClInclude Include="..\Include\xml_parser.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\text_streams.h">
-      <Filter>Header Files\Common\impl</Filter>
+      <Filter>Header Files\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\arch_ac_domain_xml2bin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\radio_hf_domain_xml2bin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\hgt_optimizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\xml2bin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\exceptions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\domain_converter.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\xml2bin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\face.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\hgt_optimizer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\binary_streams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="domain_converter.cpp">
@@ -70,17 +61,23 @@
     <ClCompile Include="radio_hf_domain_xml2bin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\text_streams.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\exceptions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="arch_ac_domain_xml2bin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\binary_streams.cpp">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\text_streams.cpp">
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
     <ClCompile Include="xml_parser.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\face.cpp">
+      <Filter>Source Files\Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

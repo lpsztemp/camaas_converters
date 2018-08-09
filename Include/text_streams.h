@@ -1,7 +1,4 @@
-#if !defined(__GNUC__) || __GNUC__ > 7
-#define CPP17_FILESYSTEM 1
-#endif
-
+#include <basedefs.h>
 #include <istream>
 #include <locale>
 #include <streambuf>
@@ -11,7 +8,7 @@
 
 #include <fstream>
 #include <string_view>
-#if CPP17_FILESYSTEM
+#if CPP17_FILESYSTEM_SUPPORT
 #include <filesystem>
 #endif
 
@@ -144,7 +141,7 @@ public:
 	{
 		static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
 	}
-#if CPP17_FILESYSTEM
+#if CPP17_FILESYSTEM_SUPPORT
 	inline text_file_istream(std::filesystem::path path, TextEncoding encoding):m_path(path.wstring()), m_is(path, std::ios_base::in) 
 	{
 		static_cast<text_istream&>(*this) = text_istream(m_is, encoding);
@@ -153,7 +150,7 @@ public:
 	{
 		static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
 	}
-#endif //CPP17_FILESYSTEM
+#endif //CPP17_FILESYSTEM_SUPPORT
 private:
 	std::wstring m_path;
 	std::ifstream m_is;
