@@ -23,7 +23,7 @@
     <ClInclude Include="..\Include\binary_streams.h">
       <Filter>Header Files\Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\bin2text.h">
+    <ClInclude Include="bin2text.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -31,7 +31,7 @@
     <ClCompile Include="..\src\binary_streams.cpp">
       <Filter>Source Files\Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\bin2text.cpp">
+    <ClCompile Include="bin2text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

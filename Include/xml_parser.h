@@ -9,7 +9,7 @@
 #include <locale>
 #include <text_streams.h>
 #include <cwctype>
-#include <exceptions.h>
+#include <xml_exceptions.h>
 
 #ifndef IMPL_XML_PARSER_H_
 #define IMPL_XML_PARSER_H_

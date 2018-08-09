@@ -142,33 +142,31 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\bin2txt\bin2txt.vcxproj">
-      <Project>{96a338a2-c4eb-4af8-8484-a339e0c7a588}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\Include\basedefs.h" />
-    <ClInclude Include="..\Include\domain_converter.h" />
-    <ClInclude Include="..\Include\exceptions.h" />
-    <ClInclude Include="..\Include\hgt_optimizer.h" />
-    <ClInclude Include="..\Include\arch_ac_domain_xml2bin.h" />
     <ClInclude Include="..\Include\binary_streams.h" />
-    <ClInclude Include="..\Include\radio_hf_domain_xml2bin.h" />
+    <ClInclude Include="..\Include\face.h" />
+    <ClInclude Include="..\Include\point.h" />
+    <ClInclude Include="..\Include\xml_exceptions.h" />
     <ClInclude Include="..\Include\xml_parser.h" />
     <ClInclude Include="..\Include\text_streams.h" />
-    <ClInclude Include="..\Include\xml2bin.h" />
+    <ClInclude Include="arch_ac_domain_xml2bin.h" />
+    <ClInclude Include="domain_converter.h" />
+    <ClInclude Include="hgt_optimizer.h" />
+    <ClInclude Include="radio_hf_domain_xml2bin.h" />
+    <ClInclude Include="xml2bin.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\exceptions.cpp" />
     <ClCompile Include="..\src\face.cpp" />
-    <ClCompile Include="..\src\hgt_optimizer.cpp" />
     <ClCompile Include="..\src\binary_streams.cpp" />
     <ClCompile Include="..\src\text_streams.cpp" />
-    <ClCompile Include="..\src\xml2bin.cpp" />
+    <ClCompile Include="..\src\xml_exceptions.cpp" />
+    <ClCompile Include="..\src\xml_parser.cpp" />
     <ClCompile Include="arch_ac_domain_xml2bin.cpp" />
     <ClCompile Include="domain_converter.cpp" />
+    <ClCompile Include="entrypoint.cpp" />
+    <ClCompile Include="hgt_optimizer.cpp" />
     <ClCompile Include="radio_hf_domain_xml2bin.cpp" />
-    <ClCompile Include="xml_parser.cpp" />
+    <ClCompile Include="xml2bin.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

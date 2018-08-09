@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <basedefs.h>
 #include <binary_streams.h>
-#include <exceptions.h>
 #include <xml_parser.h>
 
 #ifndef IMPL_RADIO_HF_DOMAIN_XML2BIN_H_

@@ -33,19 +33,9 @@ namespace Implementation
 	void xml2bin_finalize(const std::unique_ptr<conversion_state>& state);
 
 	template <class T>
-	T& get_input_stream(const std::reference_wrapper<T>& ref)
-	{
-		return ref.get();
-	}
+	struct is_input_stream:std::is_base_of<std::istream, T> {};
 	template <class T>
-	auto get_input_stream(const T& ref) -> typename std::pointer_traits<T>::element_type&
-	{
-		return std::pointer_traits<T>::pointer_to(ref);
-	}
-	template <class T>
-	struct is_input_stream:std::is_base_of<std::istream, decltype(get_input_stream(std::declval<T>()))> {};
-	template <class T>
-	struct is_text_input_stream:std::is_base_of<text_istream, decltype(get_input_stream(std::declval<T>()))> {};
+	struct is_text_input_stream:std::is_base_of<text_istream, T> {};
 }
 
 template <class DomainString, class InputIteratorXmlBegin, class InputIteratorXmlEnd>
@@ -57,8 +47,8 @@ auto xml2bin(const DomainString& strDomain, InputIteratorXmlBegin xml_is_begin, 
 {
 	using namespace Implementation;
 	auto state = xml2bin_set(strDomain, os);
-	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
-		xml2bin_next_xml(state, get_input_stream(*it));
+	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it != xml_is_end; ++it)
+		xml2bin_next_xml(state, *it);
 	xml2bin_finalize(state);
 }
 
@@ -71,8 +61,8 @@ auto hgtxml2bin(const DomainString& strDomain, const HGT_RESOLUTION_DATA& resolu
 {
 	using namespace Implementation;
 	auto state = xml2bin_set(strDomain, os);
-	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it = xml_is_end; ++it)
-		xml2bin_next_xml(state, get_input_stream(*it));
+	for (std::common_type_t<InputIteratorXmlBegin, InputIteratorXmlEnd> it = xml_is_begin; it != xml_is_end; ++it)
+		xml2bin_next_xml(state, *it);
 	xml2bin_next_hgt(state, resolution, isHgt);
 	xml2bin_finalize(state);
 }

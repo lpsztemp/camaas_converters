@@ -1,6 +1,6 @@
 #include <binary_streams.h>
-#include <xml2bin.h>
-#include <domain_converter.h>
+#include "xml2bin.h"
+#include "domain_converter.h"
 
 #ifndef XML2BIN_HGTOPTIMIZER_H_
 #define XML2BIN_HGTOPTIMIZER_H_

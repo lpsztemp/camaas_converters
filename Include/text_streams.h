@@ -62,6 +62,8 @@ public:
 		virtual int_type underflow();
 		streambuf() = default;
 		streambuf(std::streambuf* pBuf, TextEncoding encoding = TextEncoding::UTF8);
+		streambuf(streambuf&&) = default;
+		streambuf& operator=(streambuf&&) = default;
 		void set_encoding(TextEncoding encoding);
 		inline const locator& get_locator() const
 		{
@@ -99,9 +101,11 @@ public:
 		this->rdbuf(&m_buf);
 	}
 	text_istream(std::istream& is, use_bom_t);
-	text_istream(text_istream&&) = default;
-	text_istream& operator=(text_istream&&) = default;
-	inline virtual ~text_istream() {};
+	inline text_istream(text_istream&& right):std::wistream(std::move(right)), m_pIs(right.m_pIs), m_buf(std::move(right.m_buf))
+	{
+	}
+	text_istream& operator=(text_istream&& right) = default;
+	inline virtual ~text_istream() = default;
 
 	inline text_istream& set_encoding(TextEncoding encoding)
 	{
@@ -121,7 +125,9 @@ private:
 
 	inline void setfail()
 	{
-		this->setstate(this->rdstate() | std::ios_base::failbit, (this->exceptions() & std::ios_base::failbit) != 0);
+		this->setstate(std::ios_base::failbit);
+		if (this->exceptions() & std::ios_base::failbit)
+			throw std::ios_base::failure("text_istream::setfail");
 	}
 };
 
@@ -151,6 +157,8 @@ public:
 		static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
 	}
 #endif //CPP17_FILESYSTEM_SUPPORT
+	text_file_istream(text_file_istream&& right):text_istream(static_cast<text_istream&&>(right)), m_path(std::move(right.m_path)), m_is(std::move(right.m_is)) {}
+	text_file_istream& operator=(text_file_istream&&) = default;
 private:
 	std::wstring m_path;
 	std::ifstream m_is;

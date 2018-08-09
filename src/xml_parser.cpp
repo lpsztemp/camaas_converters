@@ -120,7 +120,9 @@ namespace xml
 			*this = tag(is);
 		}catch(xml_error&)
 		{
-			is.setstate(is.rdstate() | std::ios_base::badbit, is.exceptions() != 0);
+			is.setstate(is.rdstate() | std::ios_base::failbit);
+			if (is.exceptions() & std::ios_base::failbit)
+				throw std::ios_base::failure("tag::tag");
 		}
 	}
 	std::wstring tag::get_xml_word(text_istream& is)

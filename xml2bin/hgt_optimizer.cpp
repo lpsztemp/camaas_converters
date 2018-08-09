@@ -11,7 +11,8 @@
 #include <atomic>
 #include <cmath>
 #include <basedefs.h>
-#include <hgt_optimizer.h>
+#include <face.h>
+#include "hgt_optimizer.h"
 #include <binary_streams.h>
 
 constexpr static double ADDITIVE_ERROR = 1E-6;
@@ -1251,7 +1252,7 @@ unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput
 #if CPP17_FILESYSTEM_SUPPORT
 unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::filesystem::path output)
 {
-	auto os = binary_fostream(output);
+	auto os = binary_ofstream(output);
 	std::ifstream is(input, std::ios_base::in | std::ios_base::binary);
 	is.seekg(0, std::ios_base::end);
 	auto cb = is.tellg();

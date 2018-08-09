@@ -91,21 +91,69 @@ const buf_ostream& buf_ostream::serialize(std::size_t cbExtra) const
 	return *this;
 }
 
-binary_fostream& binary_fostream::write(const void* pInput, std::size_t cbHowMany)
+binary_ofstream::binary_ofstream(const std::string_view& path, bool fDiscardIfExists)
+	:m_os(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
+{
+	if (off_type(this->tellp()) != 0)
+	{
+		m_os.close();
+		this->setstate(std::ios_base::failbit);
+	}
+}
+
+#if CPP17_FILESYSTEM_SUPPORT
+binary_ofstream::binary_ofstream(const std::filesystem::path& path, bool fDiscardIfExists)
+	:m_os(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
+{
+	if (off_type(this->tellp()) != 0)
+	{
+		m_os.close();
+		this->setstate(std::ios_base::failbit);
+	}
+}
+#endif //CPP17_FILESYSTEM_SUPPORT
+
+void binary_ofstream::open(const std::string_view& path, bool fDiscardIfExists)
+{
+	m_os.open(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
+	if (off_type(m_os.tellp()) != 0)
+	{
+		m_os.close();
+		this->setstate(std::ios_base::failbit);
+		if ((m_os.exceptions() & std::ios_base::failbit) != 0)
+			throw std::ios_base::failure("binary_ofstream::open");
+	}
+}
+
+#if CPP17_FILESYSTEM_SUPPORT
+void binary_ofstream::open(const std::filesystem::path& path, bool fDiscardIfExists)
+{
+	m_os.open(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
+	if (off_type(m_os.tellp()) != 0)
+	{
+		m_os.close();
+		this->setstate(std::ios_base::failbit);
+		if ((m_os.exceptions() & std::ios_base::failbit) != 0)
+			throw std::ios_base::failure("binary_ofstream::open");
+	}
+}
+#endif //CPP17_FILESYSTEM_SUPPORT
+
+binary_ofstream& binary_ofstream::write(const void* pInput, std::size_t cbHowMany)
 {
 	m_os.write(reinterpret_cast<const char*>(pInput), cbHowMany);
 	return *this;
 }
-binary_fostream::pos_type binary_fostream::tellp() const
+binary_ofstream::pos_type binary_ofstream::tellp() const
 {
 	return pos_type(m_os.tellp());
 }
-binary_fostream& binary_fostream::seekp(binary_fostream::pos_type pos)
+binary_ofstream& binary_ofstream::seekp(binary_ofstream::pos_type pos)
 {
 	m_os.seekp(pos);
 	return *this;
 }
-binary_fostream& binary_fostream::seekp(std::ptrdiff_t off, std::ios_base::seekdir dir)
+binary_ofstream& binary_ofstream::seekp(std::ptrdiff_t off, std::ios_base::seekdir dir)
 {
 	m_os.seekp(off, dir);
 	return *this;

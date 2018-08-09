@@ -16,7 +16,7 @@
 
 struct binary_ostream
 {
-	typedef std::size_t size_type, pos_type;
+	typedef std::size_t size_type, pos_type, off_type;
 
 	virtual binary_ostream& write(const void* pInput, std::size_t cbHowMany) = 0;
 	virtual pos_type tellp() const = 0;
@@ -135,22 +135,59 @@ private:
 	const buf_ostream& serialize(std::size_t cbExtra = std::size_t()) const;
 };
 
-struct binary_fostream:binary_ostream
+struct binary_ofstream:binary_ostream
 {
 	typedef binary_ostream::pos_type pos_type;
 	typedef binary_ostream::size_type size_type;
-	inline explicit binary_fostream(const std::string_view& path):m_os(path, std::ios_base::out | std::ios_base::binary)
-	{
-	}
+	binary_ofstream() = default;
+	explicit binary_ofstream(const std::string_view& path, bool fDiscardIfExists = false);
 #if CPP17_FILESYSTEM_SUPPORT
-	inline explicit binary_fostream(const std::filesystem::path& path):m_os(path, std::ios_base::out | std::ios_base::binary)
-	{
-	}
+	explicit binary_ofstream(const std::filesystem::path& path, bool fDiscardIfExists = false);
 #endif //CPP17_FILESYSTEM_SUPPORT
-	virtual binary_fostream& write(const void* pInput, std::size_t cbHowMany);
+	void open(const std::string_view& path, bool fDiscardIfExists = false);
+#if CPP17_FILESYSTEM_SUPPORT
+	void open(const std::filesystem::path& path, bool fDiscardIfExists = false);
+#endif //CPP17_FILESYSTEM_SUPPORT
+	inline bool good() const
+	{
+		return m_os.good();
+	}
+	inline bool fail() const
+	{
+		return m_os.fail();
+	}
+	inline bool eof() const
+	{
+		return m_os.eof();
+	}
+	inline bool bad() const
+	{
+		return m_os.bad();
+	}
+	inline bool operator!() const
+	{
+		return this->fail();
+	}
+	inline explicit operator bool() const
+	{
+		return !this->fail();
+	}
+	inline std::ios_base::iostate rdstate() const
+	{
+		return m_os.rdstate();
+	}
+	inline void setstate(std::ios_base::iostate state)
+	{
+		m_os.setstate(state);
+	}
+	inline void clear(std::ios_base::iostate state = std::ios_base::goodbit)
+	{
+		m_os.clear(state);
+	}
+	virtual binary_ofstream& write(const void* pInput, std::size_t cbHowMany);
 	virtual pos_type tellp() const;
-	virtual binary_fostream& seekp(pos_type pos);
-	virtual binary_fostream& seekp(std::ptrdiff_t off, std::ios_base::seekdir dir);
+	virtual binary_ofstream& seekp(pos_type pos);
+	virtual binary_ofstream& seekp(std::ptrdiff_t off, std::ios_base::seekdir dir);
 private:
 	mutable std::ofstream m_os; //mutable because of tellp
 };
