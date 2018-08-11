@@ -34,7 +34,7 @@ public:
 	Program(int argc, char** argv)
 	{
 		int i;
-		for (i = 0; i < argc; ++i)
+		for (i = 1; i < argc; ++i)
 		{
 			if (std::string_view(argv[i]) == "--help")
 			{
@@ -133,17 +133,17 @@ private:
 std::string Program::m_help_str =
 "xml2bin <[--domain <domain_name>] [--hgt <path_to_hgt>] [--discard_output] <input_xml_file_1> [... input_xml_file_n] <output_binary_file>>|<--help>\n"\
 " --domain specifies a domain system id for which the program should perform the conversion. If an XML file contains definitions of\n"\
-"       domain data with domain id different from the id specified by the --domain parameter, that domain data will be discarded."\
+"       domain data with domain id different from the id specified by the --domain parameter, that domain data will be discarded.\n"\
 " --hgt specifies a path to a HGT file to be converted to a set of polygonal surfaces to specify, together with the XML files,\n"\
-"       the output binary model. Only SRTM 30m and SRTM 90m are supported. The parameter is optional."\
-" <input_xml_file_1> [... input_xml_file_n] is a set of one or more input XML files. Each file must specify unique objects (sources"\
-"       and/or control panes and/or polygonal reflectors) to be unified to the resulting binary definition of the model, perhaps"\
-"       with the specified HGT. All such objects, if they are named, must be specified in the set of input files not more than once.\n"\
-"       The generic model parameters (size, domain data, etc.) must be specified exactly once. Should an XML file omit the generic\n"
-"       model parameters, the set of objects specified by the file, must be bounded by <model></model> XML tags without unnecessary\n"
-"       attributes or nested definitions.\n"
-" --discard_output is a switch which allows to truncate the output file before the processing, should the file exist. Otherwise, if\n"
+"       the output binary model. Only SRTM 30m and SRTM 90m are supported. The parameter is optional.\n"\
+" --discard_output is a switch which allows to truncate the output file before the processing, should the file exist. Otherwise, if\n"\
 "       the output file exists and not empty, the program will fail.\n"\
+" <input_xml_file_1> [... input_xml_file_n] is a set of one or more input XML files. Each file must specify unique objects (sources\n"\
+"       and/or control panes and/or polygonal reflectors) to be unified to the resulting binary definition of the model, perhaps\n"\
+"       with the specified HGT. All such objects, if they are named, must be specified in the set of input files not more than once.\n"\
+"       The generic model parameters (size, domain data, etc.) must be specified exactly once. Should an XML file omit the generic\n"\
+"       model parameters, the set of objects specified by the file, must be bounded by <model></model> XML tags without unnecessary\n"\
+"       attributes or nested definitions.\n"\
 " output_binary_file specifies a path to the output binary file.\n"\
 " --help displays this message.\n";
 
