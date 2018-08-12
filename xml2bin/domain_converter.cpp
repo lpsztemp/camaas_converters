@@ -7,10 +7,13 @@ void skip_xml_domain_data(text_istream& is) //"is" is associated with the first 
 	wchar_t linebuf[100];
 	do
 	{
-		is.getline(linebuf, sizeof(linebuf), L'<');
+		auto p0 = text_istream::off_type(is.tellg());
+		is.get(linebuf, sizeof(linebuf), L'<');
 		if (is.eof())
 			throw xml_invalid_syntax(is.get_resource_locator());
-		is.putback(L'<');
+		auto cb = text_istream::off_type(is.tellg()) - p0;
+		if (cb == sizeof(linebuf) - sizeof(wchar_t))
+			continue;
 		auto tag = xml::tag(is);
 		if (tag.name() != L"domain")
 			continue;

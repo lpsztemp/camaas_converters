@@ -25,11 +25,11 @@ namespace xml
 		{
 		case L'?':
 			{
-				const wchar_t header_xml[] = L"xml";
-				auto it_is = std::istream_iterator<wchar_t, wchar_t>(is);
-				if (!std::equal(std::begin(header_xml), std::prev(std::end(header_xml)), it_is, std::istream_iterator<wchar_t, wchar_t>())
-					|| it_is == std::istream_iterator<wchar_t, wchar_t>() || !std::iswspace(*it_is))
-					throw xml_invalid_syntax(is.get_resource_locator());
+			const wchar_t header_xml[] = {L'x', L'm', L'l'};
+				auto it_is = std::istreambuf_iterator<wchar_t>(is);
+				for (auto val:header_xml)
+					if (val != *(it_is++))
+						throw xml_invalid_syntax(is.get_resource_locator());
 				if (xml::skip_whitespace(is).eof())
 					throw xml_invalid_syntax(is.get_resource_locator());
 				while (true)
@@ -77,7 +77,7 @@ namespace xml
 					if (is.eof())
 						throw xml_invalid_syntax(is.get_resource_locator());
 				}
-				if (is.get() == L'-' && is.get() == L'-' && is.get() == L'>')
+				if (is.get() == L'-' && is.get() == L'>')
 					break;
 				if (is.eof())
 					throw xml_invalid_syntax(is.get_resource_locator());
@@ -98,6 +98,7 @@ namespace xml
 					throw xml_invalid_syntax(is.get_resource_locator());
 				if (curr == L'/')
 				{
+					is.get();
 					if (xml::skip_whitespace(is).get() != L'>')
 						throw xml_invalid_syntax(is.get_resource_locator());
 					m_fIsUnary = true;
@@ -110,6 +111,7 @@ namespace xml
 				if (!m_mpAttributes.emplace(attribute, value).second)
 					throw xml_attribute_already_specified(is.get_resource_locator(), attribute);
 			}
+			is.get();
 			return;
 		};
 	}
@@ -130,7 +132,7 @@ namespace xml
 		std::wostringstream os;
 		text_istream::traits_type::int_type chCurrent;
 		xml::skip_whitespace(is);
-		while ((chCurrent = is.get()) != std::istream::traits_type::eof() && std::iswalnum(chCurrent))
+		while ((chCurrent = is.get()) != std::istream::traits_type::eof() && std::iswalnum(chCurrent) || chCurrent == text_istream::traits_type::to_int_type(L'_'))
 			os.put(text_istream::traits_type::to_char_type(chCurrent));
 		if (chCurrent != text_istream::traits_type::eof())
 			is.putback(text_istream::traits_type::to_char_type(chCurrent));

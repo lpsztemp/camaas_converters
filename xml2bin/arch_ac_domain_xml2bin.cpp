@@ -132,7 +132,7 @@ public:
 	}
 };
 
-static FaceDomainData LoadFaceDomainData(text_istream& is)
+static FaceDomainData LoadFaceDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	bool fAbsorptionSpecified = false;
 	FaceDomainData result;
@@ -171,7 +171,7 @@ static FaceDomainData LoadFaceDomainData(text_istream& is)
 						throw invalid_xml_model(is.get_resource_locator(), L"Invalid arch_ac absorption specification");
 			}
 			fAbsorptionSpecified = true;
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -189,7 +189,7 @@ static binary_ostream& operator<<(binary_ostream& os, const FaceDomainData& data
 	return os;
 }
 
-static SourceDomainData LoadSourceDomainData(text_istream& is)
+static SourceDomainData LoadSourceDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	SourceDomainData result;
 	bool fFrequencyResponseSpecified = false, fRadiationPatternSpecified = false;
@@ -290,7 +290,7 @@ static SourceDomainData LoadSourceDomainData(text_istream& is)
 			};
 			if (!fRadiationPatternSpecified)
 				throw xml_tag_not_found(is.get_resource_locator(), L"rp_row or function");
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -308,7 +308,7 @@ static binary_ostream& operator<<(binary_ostream& os, const SourceDomainData& da
 	return data.GetFrequencyResponse().write_to_stream(data.GetRadiationPattern().write_to_stream(os));
 }
 
-static ModelDomainData LoadModelDomainData(text_istream& is)
+static ModelDomainData LoadModelDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	bool fModelSpecified = false;
 	ModelDomainData result;
@@ -321,7 +321,7 @@ static ModelDomainData LoadModelDomainData(text_istream& is)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
 			result.eAttenuation = xml::get_tag_value<double>(is, tag);
 			fModelSpecified = true;
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -336,17 +336,17 @@ static binary_ostream& operator<<(binary_ostream& os, const ModelDomainData& dat
 	return os << std::uint32_t(sizeof(double)) << data.eAttenuation;
 }
 
-void arch_ac_convert::face_domain_data(text_istream& is, binary_ostream& os)
+void arch_ac_convert::face_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadFaceDomainData(is);
+	os << LoadFaceDomainData(is, opening_tag);
 }
 
-void arch_ac_convert::source_domain_data(text_istream& is, binary_ostream& os)
+void arch_ac_convert::source_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadSourceDomainData(is);
+	os << LoadSourceDomainData(is, opening_tag);
 }
 
-void arch_ac_convert::model_domain_data(text_istream& is, binary_ostream& os)
+void arch_ac_convert::model_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadModelDomainData(is);
+	os << LoadModelDomainData(is, opening_tag);
 }

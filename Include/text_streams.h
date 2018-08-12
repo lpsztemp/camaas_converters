@@ -65,7 +65,7 @@ public:
 		streambuf(streambuf&&) = default;
 		streambuf& operator=(streambuf&&) = default;
 		void set_encoding(TextEncoding encoding);
-		inline const locator& get_locator() const
+		inline const locator& get_locator() const noexcept
 		{
 			return m_locator;
 		}
@@ -90,22 +90,39 @@ public:
 		unsigned m_prev_col = 0u;
 
 		int_type readone();
+	public:
+		inline std::streambuf* rdbuf() const noexcept
+		{
+			return m_pBufImpl;
+		}
+		inline std::streambuf* rdbuf(std::streambuf* pNewBuf) noexcept
+		{
+			auto old = m_pBufImpl;
+			m_pBufImpl = pNewBuf;
+			return old;
+		}
 	};
 protected:
 	inline text_istream():std::wistream(nullptr) {}
 	enum class use_bom_t {use_bom};
 public:
 	static constexpr use_bom_t use_bom = use_bom_t::use_bom;
-	inline explicit text_istream(std::istream& is, TextEncoding enc = TextEncoding::UTF8):std::wistream(nullptr), m_pIs(&is), m_buf(is.rdbuf(), enc)
+	inline explicit text_istream(std::istream& is, TextEncoding enc = TextEncoding::UTF8):std::wistream(nullptr), /*m_pIs(&is), */m_buf(is.rdbuf(), enc)
 	{
 		this->rdbuf(&m_buf);
+		if (is.fail())
+			this->setfail();
 	}
 	text_istream(std::istream& is, use_bom_t);
-	inline text_istream(text_istream&& right):std::wistream(std::move(right)), m_pIs(right.m_pIs), m_buf(std::move(right.m_buf))
+	inline text_istream(text_istream&& right):std::wistream(std::move(right)), /*m_pIs(right.m_pIs), */m_buf(std::move(right.m_buf))
 	{
+		auto state = this->rdstate();
+		this->rdbuf(&m_buf);
+		this->setstate(state);
 	}
-	text_istream& operator=(text_istream&& right) = default;
+	text_istream& operator=(text_istream&& right);
 	inline virtual ~text_istream() = default;
+
 
 	inline text_istream& set_encoding(TextEncoding encoding)
 	{
@@ -118,9 +135,23 @@ public:
 	}
 	virtual const std::wstring& get_resource_id() const;
 	resource_locator get_resource_locator() const;
+	inline const streambuf* rdbuf() const noexcept
+	{
+		return &m_buf;
+	}
+	inline streambuf* rdbuf() noexcept
+	{
+		return &m_buf;
+	}
+	inline streambuf* rdbuf(streambuf* pNewBuf)
+	{
+		if (pNewBuf != nullptr)
+			m_buf = std::move(*pNewBuf);
+		return static_cast<streambuf*>(this->std::wistream::rdbuf(pNewBuf));
+	}
 private:
-	stream_type* m_pIs;
-	streambuf m_buf;
+	//stream_type* m_pIs;
+	mutable streambuf m_buf;
 	static const std::wstring m_strUnknownResourceId;
 
 	inline void setfail()
@@ -157,7 +188,10 @@ public:
 		static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
 	}
 #endif //CPP17_FILESYSTEM_SUPPORT
-	text_file_istream(text_file_istream&& right):text_istream(static_cast<text_istream&&>(right)), m_path(std::move(right.m_path)), m_is(std::move(right.m_is)) {}
+	inline text_file_istream(text_file_istream&& right):text_istream(static_cast<text_istream&&>(right)), m_path(std::move(right.m_path)), m_is(std::move(right.m_is)) 
+	{
+		this->rdbuf()->rdbuf(m_is.rdbuf());
+	}
 	text_file_istream& operator=(text_file_istream&&) = default;
 private:
 	std::wstring m_path;

@@ -46,12 +46,12 @@ public:
 			{
 				if (i == argc - 1 || !m_hgt.empty())
 					throw invalid_usage();
-				m_hgt = argv[i + 1];
+				m_hgt = argv[++i];
 			}else if (std::string_view(argv[i]) == "--domain")
 			{
 				if (i == argc - 1 || !m_domain.empty())
 					throw invalid_usage();
-				m_domain = argv[i + 1];
+				m_domain = argv[++i];
 			}else if (std::string_view(argv[i]) == "--discard_output")
 			{
 				if (m_fDiscardOutput)
@@ -87,6 +87,8 @@ public:
 				throw failed_to_open_a_file(strXml);
 		}
 		auto os = binary_ofstream(std::string_view(m_output), m_fDiscardOutput);
+		if (os.fail())
+			throw failed_to_open_a_file(m_output);
 		if (m_hgt.empty())
 		{
 			xml2bin(m_domain, std::begin(m_lst_xml_is), std::end(m_lst_xml_is), os);

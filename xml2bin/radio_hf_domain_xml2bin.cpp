@@ -262,14 +262,14 @@ struct PolyDomainDataDefinition
 	MediumDefinition medium;
 };
 
-static MediumDefinition LoadMediumData(text_istream& is, const xml::tag& tagOpening)
+static MediumDefinition LoadMediumData(text_istream& is, const xml::tag& opening_tag)
 {
 	MediumDefinition medium = {MediumDefinition::default_permittivity, MediumDefinition::default_permeability, MediumDefinition::default_coductivity, 
 		MediumDefinition::default_electric_loss, MediumDefinition::default_magnetic_loss};
 
 	bool fPermittivity = false, fPermeability = false, fConductivity = false,
 		fElectricLoss = false, fMagneticLoss = false;
-	assert(tagOpening.name() == L"medium");
+	assert(opening_tag.name() == L"medium");
 	while (true)
 	{
 		auto tag = xml::tag(is);
@@ -303,7 +303,7 @@ static MediumDefinition LoadMediumData(text_istream& is, const xml::tag& tagOpen
 			if (fMagneticLoss)
 				throw ambiguous_specification(is.get_resource_locator(), L"magneticLoss");
 			fMagneticLoss = true;
-		}else if (tag.name() == tagOpening.name() && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else if (tag.is_comment())
 			continue;
@@ -320,11 +320,11 @@ static binary_ostream& operator<<(binary_ostream& os, const MediumDefinition& me
 		MediumDatumTypeId::MagneticLoss << medium.eMagneticLoss << std::uint32_t();
 }
 
-static ModelMediumDefinition LoadModelMediumData(text_istream& is, const xml::tag& tagOpening)
+static ModelMediumDefinition LoadModelMediumData(text_istream& is, const xml::tag& opening_tag)
 {
 	bool fRefractionChange = false, fMedium = false;
 	ModelMediumDefinition result;
-	assert(tagOpening.name() == L"modelMedium");
+	assert(opening_tag.name() == L"modelMedium");
 	while (true)
 	{
 		auto tag = xml::tag(is);
@@ -358,7 +358,7 @@ static binary_ostream& operator<<(binary_ostream& os, const ModelMediumDefinitio
 		<< std::uint32_t();
 }
 
-static ModelDomainData LoadModelDomainData(text_istream& is)
+static ModelDomainData LoadModelDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	//bool fMinimalFieldAmplitude = false, fIterationAverageResultingChange = false, fIterationAverageResultingStep = false, fFrequencySet = false, fModelMedium = false;
 	bool fMinimalFieldAmplitude = false, fAverageIterationChange = false, fIterationCheckStep = false, fSpectrum = false, fModelMedium = false;
@@ -439,7 +439,7 @@ static ModelDomainData LoadModelDomainData(text_istream& is)
 						throw ambiguous_specification(is.get_resource_locator(), L"step");
 					eRangeStep = xml::get_tag_value<double>(is, tag);
 					fRangeStep = true;
-				}else if (tag.name() == L"frequencyRange" && tag.is_closing_tag() && tag.is_unary_tag())
+				}else if (tag.name() == L"frequencyRange" && tag.is_closing_tag() && !tag.is_unary_tag())
 					break;
 				else if (!tag.is_comment())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -458,7 +458,7 @@ static ModelDomainData LoadModelDomainData(text_istream& is)
 				throw ambiguous_specification(is.get_resource_locator(), L"modelMedium");
 			result.SetModelDomainDefinition(LoadModelMediumData(is, tag));
 			fModelMedium = true;
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -496,7 +496,7 @@ static binary_ostream& operator<<(binary_ostream& os, const ModelDomainData& def
 	return os << std::uint32_t();
 }
 
-static AntennaTypeDefinition LoadAntennaType(text_istream& is, xml::tag& opening_tag)
+static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& opening_tag)
 {
 	bool fFrequencyResponseSpecified = false, fRadiationPatternSpecified = false, fAntennaGainSpecified = false, fPolarizationSpecified = false;
 	assert(opening_tag.name() == L"antenna_type");
@@ -684,7 +684,7 @@ static binary_ostream& operator<<(binary_ostream& os, const AntennaTypeDefinitio
 	return os;
 }
 
-static AntennaDefinition LoadAntenna(text_istream& is, xml::tag& opening_tag)
+static AntennaDefinition LoadAntenna(text_istream& is, const xml::tag& opening_tag)
 {
 	AntennaDefinition result;
 	bool fAntennaTypeSpecified = false;
@@ -713,7 +713,7 @@ static binary_ostream& operator<<(binary_ostream& os, const AntennaDefinition& d
 	return os << def.m_type;
 }
 
-static SourceDomainDataDefinition LoadSourceDomainData(text_istream& is)
+static SourceDomainDataDefinition LoadSourceDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	bool fAntennaSpecified = false, fPowerSpecified = false;
 	SourceDomainDataDefinition result;
@@ -732,7 +732,7 @@ static SourceDomainDataDefinition LoadSourceDomainData(text_istream& is)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
 			result.eInputPower = xml::get_tag_value<double>(is, tag);
 			fPowerSpecified = true;
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -749,7 +749,7 @@ static binary_ostream& operator<<(binary_ostream& os, const SourceDomainDataDefi
 	return os << SourceDatumTypeId::InputPower << def.eInputPower << def.antenna << std::uint32_t();
 }
 
-static PolyDomainDataDefinition LoadPolyDomainData(text_istream& is)
+static PolyDomainDataDefinition LoadPolyDomainData(text_istream& is, const xml::tag& opening_tag)
 {
 	PolyDomainDataDefinition result;
 	bool fMediumSpecified = false;
@@ -762,7 +762,7 @@ static PolyDomainDataDefinition LoadPolyDomainData(text_istream& is)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
 			result.medium = LoadMediumData(is, tag);
 			fMediumSpecified = true;
-		}else if (tag.name() == L"domain" && tag.is_closing_tag() && !tag.is_unary_tag())
+		}else if (tag.name() == opening_tag.name() && tag.is_closing_tag() && !tag.is_unary_tag())
 			break;
 		else
 			throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -777,19 +777,19 @@ static binary_ostream& operator<<(binary_ostream& os, const PolyDomainDataDefini
 	return os << def.medium;
 }
 
-void radio_hf_convert::model_domain_data(text_istream& is, binary_ostream& os)
+void radio_hf_convert::model_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadModelDomainData(is);
+	os << LoadModelDomainData(is, opening_tag);
 }
 
-void radio_hf_convert::poly_domain_data(text_istream& is, binary_ostream& os)
+void radio_hf_convert::poly_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadPolyDomainData(is);
+	os << LoadPolyDomainData(is, opening_tag);
 }
 
-void radio_hf_convert::source_domain_data(text_istream& is, binary_ostream& os)
+void radio_hf_convert::source_domain_data(const xml::tag& opening_tag, text_istream& is, binary_ostream& os)
 {
-	os << LoadSourceDomainData(is);
+	os << LoadSourceDomainData(is, opening_tag);
 }
 
 void radio_hf_convert::constant_poly_domain_data(ConstantDomainDataId id, binary_ostream& os)

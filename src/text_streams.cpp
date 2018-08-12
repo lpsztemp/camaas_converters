@@ -163,8 +163,13 @@ void text_istream::streambuf::set_encoding(TextEncoding encoding)
 	}
 }
 
-text_istream::text_istream(std::istream& is, use_bom_t):std::wistream(nullptr), m_pIs(&is), m_buf(is.rdbuf())
+text_istream::text_istream(std::istream& is, use_bom_t):std::wistream(nullptr), /*m_pIs(&is), */m_buf(is.rdbuf())
 {
+	if (is.fail())
+	{
+		this->setstate(std::ios_base::failbit);
+		return;
+	}
 	auto pos_old = is.tellg();
 	is.seekg(0, std::ios_base::end);
 	auto cb = std::size_t(std::istream::off_type(is.tellg()));
@@ -254,6 +259,17 @@ text_istream::text_istream(std::istream& is, use_bom_t):std::wistream(nullptr), 
 		}
 	}
 	this->rdbuf(&m_buf);
+}
+
+text_istream& text_istream::operator=(text_istream&& right)
+{
+	m_buf = std::move(right.m_buf);
+	this->std::wistream::operator=(std::move(right));
+	//m_pIs = right.m_pIs;
+	auto state = this->rdstate();
+	this->rdbuf(&m_buf);
+	this->setstate(state);
+	return *this;
 }
 
 resource_locator text_istream::get_resource_locator() const

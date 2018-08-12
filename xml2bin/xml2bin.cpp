@@ -25,22 +25,22 @@ struct input_not_ready:std::invalid_argument
 	input_not_ready():std::invalid_argument("Input model is not fully specified") {}
 };
 
-constexpr double unspecified_double()
+static constexpr double unspecified_double()
 {
 	return std::numeric_limits<double>::infinity();
 }
 
-constexpr bool is_specified(double val)
+static constexpr bool is_specified(double val)
 {
 	return val != unspecified_double();
 }
 
-constexpr point_t unspecified_point()
+static constexpr point_t unspecified_point()
 {
 	return {unspecified_double(), unspecified_double(), unspecified_double()};
 }
 
-constexpr bool is_specified(const point_t& val)
+static constexpr bool is_specified(const point_t& val)
 {
 	return val.x != unspecified_double() && val.y != unspecified_double() && val.z != unspecified_double();
 }
@@ -60,7 +60,7 @@ class conversion_state_impl:public Implementation::conversion_state
 	binary_ostream* m_pOs = nullptr;
 	std::istream* m_pHgt = nullptr;
 	HGT_RESOLUTION_DATA m_hgt_res = {double(), double(), std::size_t(), std::size_t()};
-	point_t m_size;
+	point_t m_size = unspecified_point();
 	std::string m_strModelName;
 
 	typedef std::map<std::string, std::vector<std::uint8_t>> domain_data_map;
@@ -222,8 +222,6 @@ public:
 			os << object_count + std::uint32_t(hgt_stats.poly_count);
 		}
 	}
-
-
 private:
 	poly_data::face_data convert_face(const xml::tag& rTag, text_istream& is)
 	{
@@ -240,8 +238,9 @@ private:
 				if (strDomain.empty())
 					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->face_domain_data(std::move(strDomain), tag, is, os_buf);
-				face.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
+				if (m_pConv->face_domain_data(strDomain, tag, is, os_buf) 
+					&& !face.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
+					throw ambiguous_specification(is.get_resource_locator(), L"domain");
 			}else if (tag.name() == L"vertex")
 			{
 				if (!tag.is_unary_tag())
@@ -273,8 +272,6 @@ private:
 		poly.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type(L'<'))
-				throw xml_invalid_syntax(is.get_resource_locator());
 			auto tag = xml::tag(is);
 			if (tag.name() == L"domain")
 			{
@@ -284,15 +281,15 @@ private:
 				if (strDomain.empty())
 					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->poly_domain_data(std::move(strDomain), tag, is, os_buf);
-				if (!poly.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
+				if (m_pConv->poly_domain_data(strDomain, tag, is, os_buf)
+					&& !poly.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(is.get_resource_locator(), L"domain");
 			}else if (tag.name() == L"face")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
 				poly.lstFaces.emplace_back(convert_face(tag, is));
-			}else if (tag.name() == L"poly" && tag.is_closing_tag())
+			}else if (tag.name() == L"polyobject" && tag.is_closing_tag())
 				break;
 			else
 				throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -305,8 +302,6 @@ private:
 		source.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type(L'<'))
-				throw xml_invalid_syntax(is.get_resource_locator());
 			auto tag = xml::tag(is);
 			if (tag.name() == L"domain")
 			{
@@ -316,8 +311,8 @@ private:
 				if (strDomain.empty())
 					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->source_domain_data(std::move(strDomain), tag, is, os_buf);
-				if (!source.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
+				if (m_pConv->source_domain_data(strDomain, tag, is, os_buf)
+					&& !source.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(is.get_resource_locator(), L"domain");
 			}else if (tag.name() == L"position")
 			{
@@ -380,8 +375,6 @@ private:
 		plain.name = encode_string(rTag.attribute(L"name"));
 		while (true)
 		{
-			if (xml::skip_whitespace(is).get() != text_istream::traits_type::to_int_type('<'))
-				throw xml_invalid_syntax(is.get_resource_locator());
 			auto tag = xml::tag(is);
 			if (tag.name() == L"domain")
 			{
@@ -391,8 +384,8 @@ private:
 				if (strDomain.empty())
 					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->plain_domain_data(std::move(strDomain), tag, is, os_buf);
-				if (!plain.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
+				if (m_pConv->plain_domain_data(strDomain, tag, is, os_buf)
+					&& !plain.mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
 					throw ambiguous_specification(is.get_resource_locator(), L"domain");
 			}else if (tag.name() == L"position")
 			{
@@ -490,8 +483,9 @@ private:
 				if (strDomain.empty())
 					throw xml_attribute_not_found(is.get_resource_locator(), L"name");
 				buf_ostream os_buf;
-				m_pConv->model_domain_data(std::move(strDomain), tag, is, os_buf);
-				m_mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector()));
+				if (m_pConv->model_domain_data(strDomain, tag, is, os_buf) 
+					&& !m_mapDomainData.emplace(std::move(strDomain), std::move(os_buf.get_vector())).second)
+					throw ambiguous_specification(is.get_resource_locator(), L"domain");
 			}else if (tag.name() == L"polyobject")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
