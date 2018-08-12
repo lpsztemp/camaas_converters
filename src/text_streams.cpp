@@ -10,6 +10,15 @@
 #include <codecvt>
 #include <sstream>
 
+template <class Facet = std::codecvt<wchar_t, char, std::mbstate_t>>
+struct codecvt:Facet
+{
+	using Facet::Facet;
+	~codecvt() {}
+};
+
+typedef codecvt<std::codecvt_byname<wchar_t, char, std::mbstate_t>> codecvt_byname;
+
 const std::wstring text_istream::m_strUnknownResourceId = std::wstring(L"");
 
 const std::wstring& text_istream::get_resource_id() const
@@ -274,11 +283,10 @@ text_istream& text_istream::operator=(text_istream&& right)
 
 resource_locator text_istream::get_resource_locator() const
 {
-	typedef std::codecvt<wchar_t, char, std::mbstate_t> codecvt;
 	return resource_locator{
 		this->get_locator().col,
 		this->get_locator().row,
-		std::wstring_convert<codecvt>(new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")).to_bytes(this->get_resource_id())};
+		std::wstring_convert<codecvt_byname>(new codecvt_byname("")).to_bytes(this->get_resource_id())};
 }
 
 //std::string text_istream::get_location_string() const
@@ -298,14 +306,11 @@ const std::wstring& text_file_istream::get_resource_id() const
 }
 std::wstring text_file_istream::path_init(const std::string_view& path)
 {
-	return std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
-		new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")
-	).from_bytes(path.data(), path.data() + path.size());
+	return std::wstring_convert<codecvt_byname>(new codecvt_byname("")).from_bytes(path.data(), path.data() + path.size());
 }
 std::ifstream text_file_istream::stream_init(const std::wstring_view& path)
 {
-	return std::ifstream{std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
-		new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")
+	return std::ifstream{std::wstring_convert<codecvt_byname>(new codecvt_byname("")
 	).to_bytes(path.data(), path.data() + path.size()), std::ios_base::in};
 }
 
