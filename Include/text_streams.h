@@ -52,7 +52,7 @@ public:
 	{
 		unsigned col, row;
 	};
-	
+
 
 	struct streambuf:std::wstreambuf
 	{
@@ -197,12 +197,7 @@ private:
 	std::wstring m_path;
 	std::ifstream m_is;
 
-	static inline std::wstring path_init(const std::string_view& path)
-	{
-		return std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
-			&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(std::locale(""))
-			).from_bytes(path.data(), path.data() + path.size());
-	}
+	static std::wstring path_init(const std::string_view& path);
 	static inline std::ifstream stream_init(const std::string_view& path)
 	{
 		return std::ifstream{std::string(path), std::ios_base::in};
@@ -211,12 +206,7 @@ private:
 	{
 		return std::wstring(path);
 	}
-	static inline std::ifstream stream_init(const std::wstring_view& path)
-	{
-		return std::ifstream{std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
-			&std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(std::locale(""))
-			).to_bytes(path.data(), path.data() + path.size()), std::ios_base::in};
-	}
+	static std::ifstream stream_init(const std::wstring_view& path);
 };
 
 #endif //TEXT_STREAMS_H_

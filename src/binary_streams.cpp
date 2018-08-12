@@ -2,7 +2,9 @@
 #include <locale>
 #include <codecvt>
 
+#if CPP17_FILESYSTEM_SUPPORT
 unsigned temp_path::suffix = unsigned();
+#endif // CPP17_FILESYSTEM_SUPPORT
 
 buf_ostream& buf_ostream::write(const void* pInput, std::size_t cbHowMany)
 {
@@ -92,7 +94,7 @@ const buf_ostream& buf_ostream::serialize(std::size_t cbExtra) const
 }
 
 binary_ofstream::binary_ofstream(const std::string_view& path, bool fDiscardIfExists)
-	:m_os(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
+	:m_os(std::string(path), std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
 {
 	if (off_type(this->tellp()) != 0)
 	{
@@ -115,7 +117,7 @@ binary_ofstream::binary_ofstream(const std::filesystem::path& path, bool fDiscar
 
 void binary_ofstream::open(const std::string_view& path, bool fDiscardIfExists)
 {
-	m_os.open(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
+	m_os.open(std::string(path), std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
 	if (off_type(m_os.tellp()) != 0)
 	{
 		m_os.close();

@@ -23,7 +23,7 @@ text_istream::int_type text_istream::streambuf::readone()
 	wchar_t result;
 	const char* from_end;
 	wchar_t* to_end;
-	
+
 	auto cbTail = std::size_t(m_mb_buf_len - m_mb_buf_off);
 	if (cbTail == 0)
 	{
@@ -37,7 +37,7 @@ text_istream::int_type text_istream::streambuf::readone()
 		switch (status)
 		{
 		case std::codecvt_base::partial:
-		if (from_end - &m_mb_buf[0] == m_mb_buf_off)
+		if (std::size_t(from_end - &m_mb_buf[0]) == m_mb_buf_off)
 		{
 			assert(m_mb_buf_off > 0);
 			std::memmove(&m_mb_buf[0], &m_mb_buf[m_mb_buf_off], m_mb_buf_len - m_mb_buf_off);
@@ -278,7 +278,7 @@ resource_locator text_istream::get_resource_locator() const
 	return resource_locator{
 		this->get_locator().col,
 		this->get_locator().row,
-		std::wstring_convert<codecvt>(&std::use_facet<codecvt>(std::locale(""))).to_bytes(this->get_resource_id())};
+		std::wstring_convert<codecvt>(new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")).to_bytes(this->get_resource_id())};
 }
 
 //std::string text_istream::get_location_string() const
@@ -287,7 +287,7 @@ resource_locator text_istream::get_resource_locator() const
 //	std::ostringstream os;
 //	const auto& id = this->get_resource_id();
 //	if (!id.empty())
-//		os << std::wstring_convert<codecvt>(&std::use_facet<codecvt>(std::locale(""))).to_bytes(id) << " ";
+//		os << std::wstring_convert<codecvt>(new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")).to_bytes(id) << " ";
 //	os << "(column " << this->get_locator().col << ", row " << this->get_locator().row << ")";
 //	return os.str();
 //}
@@ -296,3 +296,16 @@ const std::wstring& text_file_istream::get_resource_id() const
 {
 	return m_path;
 }
+std::wstring text_file_istream::path_init(const std::string_view& path)
+{
+	return std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
+		new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")
+	).from_bytes(path.data(), path.data() + path.size());
+}
+std::ifstream text_file_istream::stream_init(const std::wstring_view& path)
+{
+	return std::ifstream{std::wstring_convert<std::codecvt<wchar_t, char, std::mbstate_t>>(
+		new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")
+	).to_bytes(path.data(), path.data() + path.size()), std::ios_base::in};
+}
+
