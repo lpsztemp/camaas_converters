@@ -34,5 +34,8 @@
     <ClCompile Include="bin2text.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="entrypoint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

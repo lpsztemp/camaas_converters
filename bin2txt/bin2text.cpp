@@ -36,7 +36,6 @@ void bin2text_arch_ac(std::istream& is, std::ostream& os)
 				for (size_type iCol = 0; iCol < cColumns; ++iCol)
 				{
 					auto cDims = read_as<size_type>(is);
-					is.read(reinterpret_cast<char*>(&cDims), sizeof(size_type));
 					if (cDims != 3)
 						throw std::logic_error("Unexpected size of results");
 					auto x = read_as<double>(is);

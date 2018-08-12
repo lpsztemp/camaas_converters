@@ -1,0 +1,4 @@
+*.xml
+*.hgt
+*.bin
+/Results*
