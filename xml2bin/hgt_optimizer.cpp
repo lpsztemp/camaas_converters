@@ -563,8 +563,8 @@ unsigned char GetPointQuadrupletType(unsigned short quad_left_col, unsigned shor
 {
 	assert(quad_left_col < g_matrix.columns() && quad_top_row < g_matrix.rows());
 	return 
-		(unsigned char(!g_matrix.is_empty_point(quad_left_col, quad_top_row)) << 3)		| (unsigned char(!g_matrix.is_empty_point(quad_left_col + 1, quad_top_row)) << 2) |
-		(unsigned char(!g_matrix.is_empty_point(quad_left_col, quad_top_row + 1)) << 0)	| (unsigned char(!g_matrix.is_empty_point(quad_left_col + 1, quad_top_row + 1)) << 1);
+		((unsigned char) (!g_matrix.is_empty_point(quad_left_col, quad_top_row)) << 3)		| ((unsigned char)(!g_matrix.is_empty_point(quad_left_col + 1, quad_top_row)) << 2) |
+		((unsigned char) (!g_matrix.is_empty_point(quad_left_col, quad_top_row + 1)) << 0)	| ((unsigned char) (!g_matrix.is_empty_point(quad_left_col + 1, quad_top_row + 1)) << 1);
 }
 
 bool Face::can_unite_with_quadruplet_left_edge(unsigned short quad_left_col, unsigned short quad_top_row) const

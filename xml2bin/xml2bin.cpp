@@ -220,6 +220,7 @@ public:
 			}
 			os.seekp(object_count_pos);
 			os << object_count + std::uint32_t(hgt_stats.poly_count);
+			os.seekp(old_pos);
 		}
 	}
 private:

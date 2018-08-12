@@ -373,10 +373,10 @@ struct generalized_converter:IDomainConverter
 		if (itConv != m_mpConv.end())
 		{
 			buf_ostream os;
-			if (!write_constant_face_domain_data(itConv->second, id, os))
-				return std::optional<domain_datum>();
-			return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
+			if (write_constant_face_domain_data(itConv->second, id, os))
+				return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
 		}
+		return std::optional<domain_datum>();
 	}
 	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const
 	{
@@ -395,10 +395,10 @@ struct generalized_converter:IDomainConverter
 		if (itConv != m_mpConv.end())
 		{
 			buf_ostream os;
-			if (!write_constant_poly_domain_data(itConv->second, id, os))
-				return std::optional<domain_datum>();
-			return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
+			if (write_constant_poly_domain_data(itConv->second, id, os))
+				return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
 		}
+		return std::optional<domain_datum>();
 	}
 	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) const
 	{
@@ -417,10 +417,10 @@ struct generalized_converter:IDomainConverter
 		if (itConv != m_mpConv.end())
 		{
 			buf_ostream os;
-			if (!write_constant_source_domain_data(itConv->second, id, os))
-				return std::optional<domain_datum>();
-			return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
+			if (write_constant_source_domain_data(itConv->second, id, os))
+				return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
 		}
+		return std::optional<domain_datum>();
 	}
 	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) const
 	{
@@ -439,10 +439,10 @@ struct generalized_converter:IDomainConverter
 		if (itConv != m_mpConv.end())
 		{
 			buf_ostream os;
-			if (!write_constant_plain_domain_data(itConv->second, id, os))
-				return std::optional<domain_datum>();
-			return std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
+			if (write_constant_plain_domain_data(itConv->second, id, os))
+				std::optional<domain_datum>{std::in_place_t(), std::move(os.get_vector())};
 		}
+		return std::optional<domain_datum>();
 	}
 	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) const
 	{

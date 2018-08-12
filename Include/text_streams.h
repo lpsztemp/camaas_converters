@@ -166,18 +166,27 @@ class text_file_istream:public text_istream
 {
 public:
 	virtual const std::wstring& get_resource_id() const;
-	template <class CharT, class TraitsT>
-	text_file_istream(std::basic_string_view<CharT, TraitsT> path, TextEncoding encoding)
+	inline text_file_istream(std::string_view path, TextEncoding encoding)
 		:m_path(path_init(path)), m_is(stream_init(path))
 	{
 		static_cast<text_istream&>(*this) = text_istream(m_is, encoding);
 	}
-	template <class CharT, class TraitsT>
-	text_file_istream(std::basic_string_view<CharT, TraitsT> path)
+	inline text_file_istream(std::string_view path)
 		:m_path(path_init(path)), m_is(stream_init(path))
 	{
 		static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
 	}
+        inline text_file_istream(std::wstring_view path, TextEncoding encoding)
+                :m_path(path_init(path)), m_is(stream_init(path))
+        {
+                static_cast<text_istream&>(*this) = text_istream(m_is, encoding);
+        }
+        inline text_file_istream(std::wstring_view path)
+                :m_path(path_init(path)), m_is(stream_init(path))
+        {
+                static_cast<text_istream&>(*this) = text_istream(m_is, text_istream::use_bom);
+        }
+
 #if CPP17_FILESYSTEM_SUPPORT
 	inline text_file_istream(std::filesystem::path path, TextEncoding encoding):m_path(path.wstring()), m_is(path, std::ios_base::in) 
 	{

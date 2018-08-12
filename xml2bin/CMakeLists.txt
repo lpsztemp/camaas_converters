@@ -8,7 +8,7 @@ SET(SOURCES ../src/binary_streams.cpp ../src/face.cpp ../src/text_streams.cpp ..
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-#target_link_libraries(${PROJECT_NAME} chsvlib read_ini lb_dll domain_shared)
+target_link_libraries(${PROJECT_NAME} pthread)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION ${BIN})
 
