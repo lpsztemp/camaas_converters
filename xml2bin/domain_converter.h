@@ -44,19 +44,19 @@ typedef std::map<std::string, domain_datum> domain_data_map;
 
 struct IDomainConverter
 {
-	virtual bool model_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
-	virtual bool poly_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
-	virtual bool face_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
-	virtual bool source_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
-	virtual bool plain_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual bool model_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual bool poly_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual bool face_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual bool source_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
+	virtual bool plain_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
 
-	virtual std::optional<domain_datum> constant_face_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const = 0;
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
 	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_poly_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const = 0;
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
 	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_source_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const = 0;
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
 	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_plain_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const = 0;
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
 	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) const = 0;
 
 	virtual ~IDomainConverter() {}
@@ -217,42 +217,42 @@ auto write_constant_plain_domain_data(Convert&, ConstantDomainDataId, binary_ost
 template <class Converter>
 struct ConverterImpl:IDomainConverter
 {
-	virtual bool model_domain_data(const std::string_view& strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool model_domain_data(std::string_view strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		if (strDomainName == Converter::domain_name())
 			return convert_model_domain_data(m_conv, domain_opening_tag, is, os);
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual bool poly_domain_data(const std::string_view& strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool poly_domain_data(std::string_view strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		if (strDomainName == Converter::domain_name())
 			return convert_poly_domain_data(m_conv, domain_opening_tag, is, os);
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual bool face_domain_data(const std::string_view& strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool face_domain_data(std::string_view strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		if (strDomainName == Converter::domain_name())
 			return convert_face_domain_data(m_conv, domain_opening_tag, is, os);
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual bool source_domain_data(const std::string_view& strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool source_domain_data(std::string_view strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		if (strDomainName == Converter::domain_name())
 			return convert_source_domain_data(m_conv, domain_opening_tag, is, os);
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual bool plain_domain_data(const std::string_view& strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool plain_domain_data(std::string_view strDomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		if (strDomainName == Converter::domain_name())
 			return convert_plain_domain_data(m_conv, domain_opening_tag, is, os);
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual std::optional<domain_datum> constant_face_domain_data(const std::string_view&, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view, ConstantDomainDataId id) const
 	{
 		buf_ostream os;
 		if (!write_constant_face_domain_data(m_conv, id, os))
@@ -264,7 +264,7 @@ struct ConverterImpl:IDomainConverter
 		auto domain_data = this->constant_face_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_poly_domain_data(const std::string_view&, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view, ConstantDomainDataId id) const
 	{
 		buf_ostream os;
 		if (!write_constant_poly_domain_data(m_conv, id, os))
@@ -276,7 +276,7 @@ struct ConverterImpl:IDomainConverter
 		auto domain_data = this->constant_poly_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_source_domain_data(const std::string_view&, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view, ConstantDomainDataId id) const
 	{
 		buf_ostream os;
 		if (!write_constant_source_domain_data(m_conv, id, os))
@@ -288,7 +288,7 @@ struct ConverterImpl:IDomainConverter
 		auto domain_data = this->constant_source_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_plain_domain_data(const std::string_view&, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view, ConstantDomainDataId id) const
 	{
 		buf_ostream os;
 		if (!write_constant_plain_domain_data(m_conv, id, os))
@@ -312,7 +312,7 @@ struct generalized_converter:IDomainConverter
 	template <class NameConverterTuple>
 	generalized_converter(NameConverterTuple&& name_conv_tpl):m_mpConv(create_map(std::forward<NameConverterTuple>(name_conv_tpl)))
 	{}
-	virtual bool model_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool model_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -323,7 +323,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual bool poly_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool poly_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -334,7 +334,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual bool face_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool face_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -345,7 +345,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual bool source_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool source_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -356,7 +356,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual bool plain_domain_data(const std::string_view& DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
+	virtual bool plain_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -367,7 +367,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual std::optional<domain_datum> constant_face_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -389,7 +389,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_poly_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -411,7 +411,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_source_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -433,7 +433,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_plain_domain_data(const std::string_view& DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -458,7 +458,7 @@ struct generalized_converter:IDomainConverter
 private:
 	struct less_transparent
 	{
-		bool operator()(const std::string_view& lhs, const std::string_view& rhs) const
+		bool operator()(std::string_view lhs, std::string_view rhs) const
 		{
 			return lhs < rhs;
 		}

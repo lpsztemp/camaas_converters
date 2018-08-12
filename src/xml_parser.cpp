@@ -132,7 +132,7 @@ namespace xml
 		std::wostringstream os;
 		text_istream::traits_type::int_type chCurrent;
 		xml::skip_whitespace(is);
-		while ((chCurrent = is.get()) != std::istream::traits_type::eof() && std::iswalnum(chCurrent) || chCurrent == text_istream::traits_type::to_int_type(L'_'))
+		while ((chCurrent = is.get()) != text_istream::traits_type::eof() && (std::iswalnum(chCurrent) || chCurrent == text_istream::traits_type::to_int_type(L'_')))
 			os.put(text_istream::traits_type::to_char_type(chCurrent));
 		if (chCurrent != text_istream::traits_type::eof())
 			is.putback(text_istream::traits_type::to_char_type(chCurrent));

@@ -103,7 +103,7 @@ class conversion_state_impl:public Implementation::conversion_state
 	std::list<plain_data> m_plainUnnamedList;
 	std::unique_ptr<IDomainConverter> m_pConv;
 public:
-	conversion_state_impl(const std::string_view& domain, binary_ostream& os):m_pOs(std::addressof(os))
+	conversion_state_impl(std::string_view domain, binary_ostream& os):m_pOs(std::addressof(os))
 	{
 		if (domain == radio_hf_convert::domain_name())
 			m_pConv.reset(new ConverterImpl<radio_hf_convert>(radio_hf_convert()));
@@ -566,7 +566,7 @@ private:
 			this->write_sequence(os, prDomainData.second);
 		}
 	}
-	void write_object_generic_part(binary_ostream& os, const std::string_view& strObjectName, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
+	void write_object_generic_part(binary_ostream& os, std::string_view strObjectName, const domain_data_map& mpDomainData, ObjectTypeId type_id) const
 	{
 		this->write_sequence(os, strObjectName);
 		this->write(os, mpDomainData);

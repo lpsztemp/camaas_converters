@@ -1404,7 +1404,7 @@ private:
 	void (hgt_state::*process_water_face_ptr)(face_t&& face) = nullptr;
 	domain_data_map m_face_water_domain_data, m_poly_water_domain_data, m_face_land_domain_data, m_poly_land_domain_data;
 
-	void write_poly_header(const std::string_view& poly_name, const domain_data_map& domain_data)
+	void write_poly_header(std::string_view poly_name, const domain_data_map& domain_data)
 	{
 		*m_pOs << std::uint32_t(poly_name.size());
 		m_pOs->write(poly_name.data(), poly_name.size());

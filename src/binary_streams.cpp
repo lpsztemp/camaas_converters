@@ -93,7 +93,7 @@ const buf_ostream& buf_ostream::serialize(std::size_t cbExtra) const
 	return *this;
 }
 
-binary_ofstream::binary_ofstream(const std::string_view& path, bool fDiscardIfExists)
+binary_ofstream::binary_ofstream(std::string_view path, bool fDiscardIfExists)
 	:m_os(std::string(path), std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
 {
 	if (off_type(this->tellp()) != 0)
@@ -115,7 +115,7 @@ binary_ofstream::binary_ofstream(const std::filesystem::path& path, bool fDiscar
 }
 #endif //CPP17_FILESYSTEM_SUPPORT
 
-void binary_ofstream::open(const std::string_view& path, bool fDiscardIfExists)
+void binary_ofstream::open(std::string_view path, bool fDiscardIfExists)
 {
 	m_os.open(std::string(path), std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
 	if (off_type(m_os.tellp()) != 0)

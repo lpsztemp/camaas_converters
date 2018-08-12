@@ -140,11 +140,11 @@ struct binary_ofstream:binary_ostream
 	typedef binary_ostream::pos_type pos_type;
 	typedef binary_ostream::size_type size_type;
 	binary_ofstream() = default;
-	explicit binary_ofstream(const std::string_view& path, bool fDiscardIfExists = false);
+	explicit binary_ofstream(std::string_view path, bool fDiscardIfExists = false);
 #if CPP17_FILESYSTEM_SUPPORT
 	explicit binary_ofstream(const std::filesystem::path& path, bool fDiscardIfExists = false);
 #endif //CPP17_FILESYSTEM_SUPPORT
-	void open(const std::string_view& path, bool fDiscardIfExists = false);
+	void open(std::string_view path, bool fDiscardIfExists = false);
 #if CPP17_FILESYSTEM_SUPPORT
 	void open(const std::filesystem::path& path, bool fDiscardIfExists = false);
 #endif //CPP17_FILESYSTEM_SUPPORT

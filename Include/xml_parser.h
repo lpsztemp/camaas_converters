@@ -108,7 +108,7 @@ namespace xml
 	//is must correspond to a position to read from. Leading white spaces will be ignored. After the value is read, the following closing XML
 	//tag will be read, ignoring any preceding white space characters, and, if tag_name is not empty, will be checked against tag_name to match it.
 	template <class T>
-	auto get_tag_value(text_istream& is, const std::wstring_view& tag_name = std::string_view())
+	auto get_tag_value(text_istream& is, std::wstring_view tag_name = std::string_view())
 	-> std::enable_if_t<std::is_arithmetic_v<T>, T>
 	{
 		T val;
@@ -120,7 +120,7 @@ namespace xml
 	}
 
 	template <class T>
-	auto get_tag_value(text_istream& is, const std::wstring_view& tag_name = std::wstring_view(), bool fDiscardBoundingSpaces = true)
+	auto get_tag_value(text_istream& is, std::wstring_view tag_name = std::wstring_view(), bool fDiscardBoundingSpaces = true)
 	-> std::enable_if_t<std::is_same_v<std::basic_string<text_istream::char_type, text_istream::traits_type, typename T::allocator_type>, T>, T>
 	{
 		std::basic_string<text_istream::char_type, text_istream::traits_type, typename T::allocator_type> str;
