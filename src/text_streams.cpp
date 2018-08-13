@@ -105,24 +105,6 @@ text_istream::pos_type text_istream::streambuf::seekpos(text_istream::pos_type p
 	return pos == pos_type()?this->seekoff(off_type(), std::ios_base::beg, which):pos_type(off_type(-1));
 }
 
-text_istream::int_type text_istream::streambuf::pbackfail(text_istream::int_type c)
-{
-	if (c == traits_type::eof() || traits_type::to_int_type(m_chLast) != c)
-		return traits_type::eof();
-	if (m_locator.col > 0)
-		--m_locator.col;
-	else
-	{
-		if (--m_locator.row == 0)
-		{
-			++m_locator.row;
-			return traits_type::eof();
-		}
-		m_locator.col = m_prev_col;
-	}
-	return traits_type::to_int_type(m_chLast);
-}
-
 text_istream::streambuf::int_type text_istream::streambuf::underflow()
 {
 	auto ch = readone();
@@ -172,7 +154,7 @@ void text_istream::streambuf::set_encoding(TextEncoding encoding)
 	}
 }
 
-text_istream::text_istream(std::istream& is, use_bom_t):std::wistream(nullptr), /*m_pIs(&is), */m_buf(is.rdbuf())
+text_istream::text_istream(std::istream& is, use_bom_t):std::wistream(nullptr), m_buf(is.rdbuf())
 {
 	if (is.fail())
 	{
@@ -274,7 +256,6 @@ text_istream& text_istream::operator=(text_istream&& right)
 {
 	m_buf = std::move(right.m_buf);
 	this->std::wistream::operator=(std::move(right));
-	//m_pIs = right.m_pIs;
 	auto state = this->rdstate();
 	this->rdbuf(&m_buf);
 	this->setstate(state);
@@ -288,17 +269,6 @@ resource_locator text_istream::get_resource_locator() const
 		this->get_locator().row,
 		std::wstring_convert<codecvt_byname>(new codecvt_byname("")).to_bytes(this->get_resource_id())};
 }
-
-//std::string text_istream::get_location_string() const
-//{
-//	typedef std::codecvt<wchar_t, char, std::mbstate_t> codecvt;
-//	std::ostringstream os;
-//	const auto& id = this->get_resource_id();
-//	if (!id.empty())
-//		os << std::wstring_convert<codecvt>(new std::codecvt_byname<wchar_t, char, std::mbstate_t>("")).to_bytes(id) << " ";
-//	os << "(column " << this->get_locator().col << ", row " << this->get_locator().row << ")";
-//	return os.str();
-//}
 
 const std::wstring& text_file_istream::get_resource_id() const
 {

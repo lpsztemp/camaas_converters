@@ -597,7 +597,7 @@ private:
 	}
 	void write(binary_ostream& os, const plain_data& plain) const
 	{
-		this->write_object_generic_part(os, plain.name, plain.mapDomainData, ObjectSource);
+		this->write_object_generic_part(os, plain.name, plain.mapDomainData, ObjectPlain);
 		this->write(os, plain.pos);
 		this->write(os, std::uint32_t(2));
 		this->write(os, plain.v1);

@@ -83,7 +83,7 @@ public:
 			throw invalid_usage();
 		for (const auto& strXml:m_lstXml)
 		{
-			if (m_lst_xml_is.emplace_back(text_file_istream(strXml)).fail())
+			if (m_lst_xml_is.emplace_back(text_file_istream(std::string_view(strXml))).fail())
 				throw failed_to_open_a_file(strXml);
 		}
 		auto os = binary_ofstream(std::string_view(m_output), m_fDiscardOutput);

@@ -58,7 +58,6 @@ public:
 	{
 		virtual pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
 		virtual pos_type seekpos(pos_type pos, std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
-		virtual int_type pbackfail(int_type c = traits_type::eof());
 		virtual int_type underflow();
 		streambuf() = default;
 		streambuf(std::streambuf* pBuf, TextEncoding encoding = TextEncoding::UTF8);
@@ -72,7 +71,6 @@ public:
 	private:
 		char m_mb_buf[MB_LEN_MAX];
 		std::size_t m_mb_buf_off = sizeof(m_mb_buf);
-		//std::size_t m_mb_buf_valid = std::size_t();
 		std::size_t m_mb_buf_len = sizeof(m_mb_buf); //number of bytes in the buffer
 		std::mbstate_t m_conv_state = std::mbstate_t();
 		char_type m_chLast = char_type();
@@ -107,14 +105,14 @@ protected:
 	enum class use_bom_t {use_bom};
 public:
 	static constexpr use_bom_t use_bom = use_bom_t::use_bom;
-	inline explicit text_istream(std::istream& is, TextEncoding enc = TextEncoding::UTF8):std::wistream(nullptr), /*m_pIs(&is), */m_buf(is.rdbuf(), enc)
+	inline explicit text_istream(std::istream& is, TextEncoding enc = TextEncoding::UTF8):std::wistream(nullptr), m_buf(is.rdbuf(), enc)
 	{
 		this->rdbuf(&m_buf);
 		if (is.fail())
 			this->setfail();
 	}
 	text_istream(std::istream& is, use_bom_t);
-	inline text_istream(text_istream&& right):std::wistream(std::move(right)), /*m_pIs(right.m_pIs), */m_buf(std::move(right.m_buf))
+	inline text_istream(text_istream&& right):std::wistream(std::move(right)), m_buf(std::move(right.m_buf))
 	{
 		auto state = this->rdstate();
 		this->rdbuf(&m_buf);
@@ -150,7 +148,6 @@ public:
 		return static_cast<streambuf*>(this->std::wistream::rdbuf(pNewBuf));
 	}
 private:
-	//stream_type* m_pIs;
 	mutable streambuf m_buf;
 	static const std::wstring m_strUnknownResourceId;
 
