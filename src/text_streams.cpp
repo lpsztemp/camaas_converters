@@ -270,15 +270,15 @@ resource_locator text_istream::get_resource_locator() const
 		std::wstring_convert<codecvt_byname>(new codecvt_byname("")).to_bytes(this->get_resource_id())};
 }
 
-const std::wstring& text_file_istream::get_resource_id() const
+const std::wstring& text_ifstream::get_resource_id() const
 {
 	return m_path;
 }
-std::wstring text_file_istream::path_init(std::string_view path)
+std::wstring text_ifstream::path_init(std::string_view path)
 {
 	return std::wstring_convert<codecvt_byname>(new codecvt_byname("")).from_bytes(path.data(), path.data() + path.size());
 }
-std::ifstream text_file_istream::stream_init(std::wstring_view path)
+std::ifstream text_ifstream::stream_init(std::wstring_view path)
 {
 	return std::ifstream{std::wstring_convert<codecvt_byname>(new codecvt_byname("")
 	).to_bytes(path.data(), path.data() + path.size()), std::ios_base::in};

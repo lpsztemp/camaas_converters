@@ -77,13 +77,13 @@ public:
 	}
 	Program& run()
 	{
-		std::list<text_file_istream> m_lst_xml_is;
+		std::list<text_ifstream> m_lst_xml_is;
 
 		if (!is_ready())
 			throw invalid_usage();
 		for (const auto& strXml:m_lstXml)
 		{
-			if (m_lst_xml_is.emplace_back(text_file_istream(std::string_view(strXml))).fail())
+			if (m_lst_xml_is.emplace_back(text_ifstream(std::string_view(strXml))).fail())
 				throw failed_to_open_a_file(strXml);
 		}
 		auto os = binary_ofstream(std::string_view(m_output), m_fDiscardOutput);
