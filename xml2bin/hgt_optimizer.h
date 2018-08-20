@@ -6,11 +6,11 @@
 #define XML2BIN_HGTOPTIMIZER_H_
 
 //returns a number of faces obtained
-unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution);
+//unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution);
 
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::filesystem::path output);
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 
 struct HGT_CONVERSION_STATS
 {
@@ -20,6 +20,7 @@ struct HGT_CONVERSION_STATS
 };
 
 //returns min and max heights
-HGT_CONVERSION_STATS convert_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is_data, const IDomainConverter& converter, binary_ostream& os);
+HGT_CONVERSION_STATS convert_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is_data, IDomainConverter& converter, binary_ostream& os);
 
 #endif //XML2BIN_HGTOPTIMIZER_H_
+

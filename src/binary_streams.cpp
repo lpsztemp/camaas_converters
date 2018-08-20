@@ -2,9 +2,9 @@
 #include <locale>
 #include <codecvt>
 
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 unsigned temp_path::suffix = unsigned();
-#endif // CPP17_FILESYSTEM_SUPPORT
+#endif // FILESYSTEM_CPP17
 
 buf_ostream& buf_ostream::write(const void* pInput, std::size_t cbHowMany)
 {
@@ -36,6 +36,26 @@ buf_ostream& buf_ostream::write(const void* pInput, std::size_t cbHowMany)
 		std::copy(static_cast<const std::uint8_t*>(pInput) + cbInPlace, static_cast<const std::uint8_t*>(pInput) + cbHowMany,
 			std::back_inserter(m_buf));
 		m_cbOffset = cb;
+	}
+	return *this;
+}
+
+void buf_ostream::clear_buffers()
+{
+	m_buf.clear();
+	m_lst_buf.clear();
+	m_cbListSize = std::size_t();
+	m_cbOffset = std::size_t();
+}
+
+buf_ostream::data_block& buf_ostream::data_block::operator=(buf_ostream::data_block&& r)
+{
+	if (this != &r)
+	{
+		m_pData = r.m_pData;
+		m_cbData = r.m_cbData;
+		r.m_pData = nullptr;
+		r.m_cbData = 0;
 	}
 	return *this;
 }
@@ -103,7 +123,7 @@ binary_ofstream::binary_ofstream(std::string_view path, bool fDiscardIfExists)
 	}
 }
 
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 binary_ofstream::binary_ofstream(const std::filesystem::path& path, bool fDiscardIfExists)
 	:m_os(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app))
 {
@@ -113,7 +133,7 @@ binary_ofstream::binary_ofstream(const std::filesystem::path& path, bool fDiscar
 		this->setstate(std::ios_base::failbit);
 	}
 }
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 
 void binary_ofstream::open(std::string_view path, bool fDiscardIfExists)
 {
@@ -127,7 +147,7 @@ void binary_ofstream::open(std::string_view path, bool fDiscardIfExists)
 	}
 }
 
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 void binary_ofstream::open(const std::filesystem::path& path, bool fDiscardIfExists)
 {
 	m_os.open(path, std::ios_base::out | std::ios_base::binary | (fDiscardIfExists?std::ios_base::trunc:std::ios_base::app));
@@ -139,7 +159,7 @@ void binary_ofstream::open(const std::filesystem::path& path, bool fDiscardIfExi
 			throw std::ios_base::failure("binary_ofstream::open");
 	}
 }
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 
 binary_ofstream& binary_ofstream::write(const void* pInput, std::size_t cbHowMany)
 {
@@ -158,6 +178,26 @@ binary_ofstream& binary_ofstream::seekp(binary_ofstream::pos_type pos)
 binary_ofstream& binary_ofstream::seekp(std::ptrdiff_t off, std::ios_base::seekdir dir)
 {
 	m_os.seekp(off, dir);
+	return *this;
+}
+
+#if FILESYSTEM_CPP17
+std::filesystem::path temp_path::get_file_path()
+{
+	std::filesystem::path path;
+	do
+	{
+		path = std::filesystem::temp_directory_path() / (std::string("coverter_buffer_") + std::to_string(++suffix));
+	}while (exists(status(path)));
+	return path;
+}
+#endif //FILESYSTEM_CPP17
+
+buf_istream& buf_istream::operator=(buf_istream&& right)
+{
+	this->std::istream::operator=(std::move(right));
+	m_buf = std::move(right.m_buf);
+	this->rdbuf(&m_buf);
 	return *this;
 }
 

@@ -50,14 +50,14 @@ struct IDomainConverter
 	virtual bool source_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
 	virtual bool plain_domain_data(std::string_view DomainName, const xml::tag& domain_opening_tag, text_istream& is, binary_ostream& os) = 0;
 
-	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
-	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
-	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
-	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) const = 0;
-	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id) const = 0;
-	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) const = 0;
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id) = 0;
+	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) = 0;
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id) = 0;
+	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) = 0;
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id) = 0;
+	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) = 0;
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id) = 0;
+	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) = 0;
 
 	virtual ~IDomainConverter() {}
 };
@@ -252,50 +252,50 @@ struct ConverterImpl:IDomainConverter
 		skip_xml_domain_data(is);
 		return false;
 	}
-	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view, ConstantDomainDataId id)
 	{
 		buf_ostream os;
 		if (!write_constant_face_domain_data(m_conv, id, os))
 			return std::optional<domain_datum>();
 		return std::move(os.get_vector());
 	}
-	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id)
 	{
 		auto domain_data = this->constant_face_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view, ConstantDomainDataId id)
 	{
 		buf_ostream os;
 		if (!write_constant_poly_domain_data(m_conv, id, os))
 			return std::optional<domain_datum>();
 		return std::move(os.get_vector());
 	}
-	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id)
 	{
 		auto domain_data = this->constant_poly_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view, ConstantDomainDataId id)
 	{
 		buf_ostream os;
 		if (!write_constant_source_domain_data(m_conv, id, os))
 			return std::optional<domain_datum>();
 		return std::move(os.get_vector());
 	}
-	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id)
 	{
 		auto domain_data = this->constant_source_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
 	}
-	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view, ConstantDomainDataId id)
 	{
 		buf_ostream os;
 		if (!write_constant_plain_domain_data(m_conv, id, os))
 			return std::optional<domain_datum>();
 		return std::move(os.get_vector());
 	}
-	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id)
 	{
 		auto domain_data = this->constant_plain_domain_data(Converter::domain_name(), id);
 		return domain_data.has_value()?domain_data_map{{Converter::domain_name(), std::move(domain_data.value())}}:domain_data_map{};
@@ -367,7 +367,7 @@ struct generalized_converter:IDomainConverter
 			return false;
 		}
 	}
-	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_face_domain_data(std::string_view DomainName, ConstantDomainDataId id)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -378,7 +378,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return std::optional<domain_datum>();
 	}
-	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_face_domain_data(ConstantDomainDataId id)
 	{
 		domain_data_map mpRet;
 		for (auto& conv:m_mpConv)
@@ -389,7 +389,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_poly_domain_data(std::string_view DomainName, ConstantDomainDataId id)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -400,7 +400,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return std::optional<domain_datum>();
 	}
-	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_poly_domain_data(ConstantDomainDataId id)
 	{
 		domain_data_map mpRet;
 		for (auto& conv:m_mpConv)
@@ -411,7 +411,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_source_domain_data(std::string_view DomainName, ConstantDomainDataId id)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -422,7 +422,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return std::optional<domain_datum>();
 	}
-	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_source_domain_data(ConstantDomainDataId id)
 	{
 		domain_data_map mpRet;
 		for (auto& conv:m_mpConv)
@@ -433,7 +433,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return mpRet;
 	}
-	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id) const
+	virtual std::optional<domain_datum> constant_plain_domain_data(std::string_view DomainName, ConstantDomainDataId id)
 	{
 		auto itConv = m_mpConv.find(DomainName);
 		if (itConv != m_mpConv.end())
@@ -444,7 +444,7 @@ struct generalized_converter:IDomainConverter
 		}
 		return std::optional<domain_datum>();
 	}
-	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id) const
+	virtual domain_data_map constant_plain_domain_data(ConstantDomainDataId id)
 	{
 		domain_data_map mpRet;
 		for (auto& conv:m_mpConv)

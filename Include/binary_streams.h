@@ -74,13 +74,7 @@ struct buf_ostream:binary_ostream
 		this->serialize();
 		return m_buf;
 	}
-	inline void clear()
-	{
-		m_buf.clear();
-		m_lst_buf.clear();
-		m_cbListSize = std::size_t();
-		m_cbOffset = std::size_t();
-	}
+	void clear_buffers();
 	pos_type tellp() const;
 	buf_ostream& seekp(pos_type pos);
 	buf_ostream& seekp(std::ptrdiff_t off, std::ios_base::seekdir dir);
@@ -100,17 +94,7 @@ private:
 			swap(m_cbData, r.m_cbData);
 		}
 		data_block& operator=(const data_block& r) = delete;
-		inline data_block& operator=(data_block&& r)
-		{
-			if (this != &r)
-			{
-				m_pData = r.m_pData;
-				m_cbData = r.m_cbData;
-				r.m_pData = nullptr;
-				r.m_cbData = 0;
-			}
-			return *this;
-		}
+		data_block& operator=(data_block&& r);
 		inline ~data_block()
 		{
 			if (m_pData)
@@ -141,13 +125,13 @@ struct binary_ofstream:binary_ostream
 	typedef binary_ostream::size_type size_type;
 	binary_ofstream() = default;
 	explicit binary_ofstream(std::string_view path, bool fDiscardIfExists = false);
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 	explicit binary_ofstream(const std::filesystem::path& path, bool fDiscardIfExists = false);
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 	void open(std::string_view path, bool fDiscardIfExists = false);
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 	void open(const std::filesystem::path& path, bool fDiscardIfExists = false);
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 	inline bool good() const
 	{
 		return m_os.good();
@@ -192,7 +176,7 @@ private:
 	mutable std::ofstream m_os; //mutable because of tellp
 };
 
-#if CPP17_FILESYSTEM_SUPPORT
+#if FILESYSTEM_CPP17
 struct temp_path:std::filesystem::path
 {
 	inline temp_path():std::filesystem::path(get_file_path()) {}
@@ -203,17 +187,36 @@ struct temp_path:std::filesystem::path
 	}
 private:
 	static unsigned suffix;
-	inline static std::filesystem::path get_file_path()
-	{
-		std::filesystem::path path;
-		do
-		{
-			path = std::filesystem::temp_directory_path() / (std::string("coverter_buffer_") + std::to_string(++suffix));
-		}while (exists(status(path)));
-		return path;
-	}
+	static std::filesystem::path get_file_path();
 };
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
+
+struct buf_istream:std::istream
+{
+	struct buf_istream_buf:std::streambuf
+	{
+		buf_istream_buf() = default;
+		buf_istream_buf(const buf_istream_buf&) = default;
+		buf_istream_buf& operator=(const buf_istream_buf&) = default;
+		inline buf_istream_buf(const void* pData, std::size_t cbData)
+		{
+			auto pBuf = (char*) pData;
+			this->setg(&pBuf[0], &pBuf[0], &pBuf[cbData]);
+		}
+	};
+	inline buf_istream():std::istream(nullptr) {}
+	inline buf_istream(const void* pData, std::size_t cbData):std::istream(nullptr), m_buf(pData, cbData)
+	{
+		this->rdbuf(&m_buf);
+	}
+	inline buf_istream(buf_istream&& right):std::istream(std::move(right)), m_buf(std::move(right.m_buf))
+	{
+		this->rdbuf(&m_buf);
+	}
+	buf_istream& operator=(buf_istream&& right);
+private:
+	buf_istream_buf m_buf;
+};
 
 std::string encode_string(const std::wstring& str);
 

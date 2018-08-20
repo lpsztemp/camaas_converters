@@ -139,14 +139,18 @@ static FaceDomainData LoadFaceDomainData(text_istream& is, const xml::tag& openi
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"absorption")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"absorption")
 		{
 			if (fAbsorptionSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"absorption_row")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"absorption_row")
 				{
 					auto freq = tag.attribute(L"frequency");
 					if (freq.empty())
@@ -196,14 +200,18 @@ static SourceDomainData LoadSourceDomainData(text_istream& is, const xml::tag& o
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"afc")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"afc")
 		{
 			if (fFrequencyResponseSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), L"afc");
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"function")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"function")
 				{
 					if (fFrequencyResponseSpecified)
 						throw ambiguous_specification(is.get_resource_locator(), L"afc");
@@ -223,7 +231,9 @@ static SourceDomainData LoadSourceDomainData(text_istream& is, const xml::tag& o
 						if (!fr.emplace(std::stod(freq), value))
 							throw ambiguous_specification(is.get_resource_locator(), L"afc_row");
 						tag = xml::tag(is);
-						if (tag.name() == L"afc_row")
+						if (tag.is_comment())
+							continue;
+						else if (tag.name() == L"afc_row")
 							continue;
 						else if (tag.name() == L"afc" && tag.is_closing_tag() && !tag.is_unary_tag())
 							break;
@@ -247,7 +257,9 @@ static SourceDomainData LoadSourceDomainData(text_istream& is, const xml::tag& o
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"function")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"function")
 				{
 					if (fRadiationPatternSpecified)
 						throw ambiguous_specification(is.get_resource_locator(), L"rp");
@@ -273,7 +285,9 @@ static SourceDomainData LoadSourceDomainData(text_istream& is, const xml::tag& o
 						if (!rp.emplace(std::stod(freq), std::stod(az), std::stod(zn), value))
 							throw ambiguous_specification(is.get_resource_locator(), L"rp_row");
 						tag = xml::tag(is);
-						if (tag.name() == L"rp_row")
+						if (tag.is_comment())
+							continue;
+						else if (tag.name() == L"rp_row")
 							continue;
 						else if (tag.name() == L"rp" && tag.is_closing_tag() && !tag.is_unary_tag())
 							break;
@@ -315,7 +329,9 @@ static ModelDomainData LoadModelDomainData(text_istream& is, const xml::tag& ope
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"attenuation")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"attenuation")
 		{
 			if (fModelSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());

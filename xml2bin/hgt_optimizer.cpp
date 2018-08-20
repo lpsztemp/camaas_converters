@@ -15,7 +15,13 @@
 #include "hgt_optimizer.h"
 #include <binary_streams.h>
 
+namespace CAMaaS
+{
+	typedef std::uint32_t size_type;
+}
+
 constexpr static double ADDITIVE_ERROR = 1E-6;
+constexpr static short MIN_VALID_HGT_VALUE = -500;
 
 constexpr static bool vertex_has_zero_height(const point_t& pt)
 {
@@ -23,6 +29,11 @@ constexpr static bool vertex_has_zero_height(const point_t& pt)
 }
 
 inline static bool vertex_has_zero_height(unsigned pt);
+
+constexpr static short bswap(short w)
+{
+	return (short) ((unsigned short) w << 8) | ((unsigned short) w >> 8);
+}
 
 template <class FaceType>
 inline static ConstantDomainDataId GetFaceDomainDataId(const FaceType& face)
@@ -44,13 +55,13 @@ inline static bool SameDomainData(const FaceType& left, const FaceType& right)
 
 class Matrix
 {
-	const short* m_points = nullptr;
+	short* m_points = nullptr;
 	std::unique_ptr<std::int8_t[]> m_pVertexStatus;
 	unsigned short m_cColumns = 0, m_cRows = 0;
 	double m_eColumnResolution = 0, m_eRowResolution = 0;
 public:
 	Matrix() = default;
-	Matrix(const short* pPoints, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution)
+	Matrix(short* pPoints, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution)
 		:m_points(pPoints), m_pVertexStatus(std::make_unique<std::int8_t[]>(std::size_t(cColumns) * cRows)), 
 		m_cColumns(cColumns), m_cRows(cRows), m_eColumnResolution(eColumnResolution), m_eRowResolution(eRowResolution) 
 	{
@@ -58,52 +69,44 @@ public:
 		auto cItemsTotal = unsigned(cColumns) * cRows;
 		auto cBlock = (cItemsTotal + cBlocks - 1) / cBlocks;
 		std::list<std::thread> threads;
-		for (unsigned iThread = 0; iThread < 0; ++iThread)
+		std::atomic<unsigned> fence_1(unsigned(0)), fence_2(unsigned(0));
+
+		for (unsigned iThread = 0; iThread < cBlocks; ++iThread)
 		{
-			threads.emplace_back([this, iThread, cBlock, cItemsTotal](std::int8_t* p) -> void
+			threads.emplace_back([this, iThread, cBlock, cBlocks, cItemsTotal, &fence_1, &fence_2]() -> void
 			{
+				auto iBegin = iThread * cBlock;
 				auto iEnd = std::min((iThread + 1) * cBlock, cItemsTotal);
-				for (auto iElement = iThread * cBlock; iElement < iEnd; ++iElement)
+				for (auto iElement = iBegin; iElement < iEnd; ++iElement)
+					m_points[iElement] = height_data_bswap(iElement);
+				if (fence_1.fetch_add(1, std::memory_order_acq_rel) + 1 < cBlocks)
+					do {std::this_thread::yield();} while (fence_1.load(std::memory_order_acquire) < cBlocks);
+				std::unique_ptr<short[]> pBuf;
+				unsigned buf_begin;
 				{
-					auto col = this->point_x(iElement);
-					auto row = this->point_y(iElement);
-					if (col > 0 && col < this->columns() - 1 
-						&& row > 0 && row < this->rows() - 1
-						&& this->point_z(col, row) - this->point_z(col - 1, row) == this->point_z(col + 1, row) - this->point_z(col, row)
-						&& this->point_z(col, row) - this->point_z(col, row - 1) == this->point_z(col, row + 1) - this->point_z(col, row)
-						&& this->point_z(col, row - 1) - this->point_z(col - 1, row - 1) == this->point_z(col, row) - this->point_z(col - 1, row)
-						&& this->point_z(col, row + 1) - this->point_z(col - 1, row + 1) == this->point_z(col, row) - this->point_z(col - 1, row)
-						&& this->point_z(col + 1, row - 1) - this->point_z(col, row - 1) == this->point_z(col + 1, row) - this->point_z(col, row)
-						&& this->point_z(col + 1, row + 1) - this->point_z(col, row + 1) == this->point_z(col + 1, row) - this->point_z(col, row))
+					for (auto iElement = iBegin; iElement < iEnd; ++iElement)
 					{
-						point_t v_tl = this->get_external_point(col - 1, row - 1);
-						point_t v_tp = this->get_external_point(col, row - 1);
-						point_t v_tr = this->get_external_point(col + 1, row - 1);
-						point_t v_lf = this->get_external_point(col - 1, row);
-						point_t v_md = this->get_external_point(col, row);
-						point_t v_rt = this->get_external_point(col + 1, row);
-						point_t v_bl = this->get_external_point(col - 1, row + 1);
-						point_t v_bt = this->get_external_point(col, row + 1);
-						point_t v_br = this->get_external_point(col + 1, row + 1);
-						point_t f_tl_lb[] = {v_tl, v_md, v_lf};
-						point_t f_tl_rt[] = {v_tl, v_tp, v_md};
-						point_t f_tr_lb[] = {v_tp, v_rt, v_md};
-						point_t f_tr_rt[] = {v_tp, v_tr, v_rt};
-						point_t f_bl_lb[] = {v_lf, v_bt, v_bl};
-						point_t f_bl_rt[] = {v_lf, v_md, v_bt};
-						point_t f_br_lb[] = {v_md, v_br, v_bt};
-						point_t f_br_rt[] = {v_md, v_rt, v_br};
-						p[iElement] = std::int8_t(SameDomainData(face_t(std::begin(f_tl_lb), std::end(f_tl_lb)), face_t(std::begin(f_tl_rt), std::end(f_tl_rt)))
-							&& SameDomainData(face_t(std::begin(f_tl_rt), std::end(f_tl_rt)), face_t(std::begin(f_tr_lb), std::end(f_tr_lb)))
-							&& SameDomainData(face_t(std::begin(f_tr_lb), std::end(f_tr_lb)), face_t(std::begin(f_tr_rt), std::end(f_tr_rt)))
-							&& SameDomainData(face_t(std::begin(f_tr_rt), std::end(f_tr_rt)), face_t(std::begin(f_bl_lb), std::end(f_bl_lb)))
-							&& SameDomainData(face_t(std::begin(f_bl_lb), std::end(f_bl_lb)), face_t(std::begin(f_bl_rt), std::end(f_bl_rt)))
-							&& SameDomainData(face_t(std::begin(f_bl_rt), std::end(f_bl_rt)), face_t(std::begin(f_br_lb), std::end(f_br_lb)))
-							&& SameDomainData(face_t(std::begin(f_br_lb), std::end(f_br_lb)), face_t(std::begin(f_br_rt), std::end(f_br_rt))));
-					}else
-						p[iElement] = false;
+						if (m_points[iElement] < MIN_VALID_HGT_VALUE)
+						{
+							pBuf = std::make_unique<short[]>(std::size_t(iEnd - iElement));
+							std::memcpy(pBuf.get(), &m_points[iElement], std::size_t(iEnd - iElement) * sizeof(short));
+							buf_begin = iElement;
+							do
+							{
+								pBuf[iElement - buf_begin] = average_invalid_height(iElement);
+							}while (++iElement < iEnd);
+						}
+					}
 				}
-			}, m_pVertexStatus.get());
+				if (fence_2.fetch_add(1, std::memory_order_acq_rel) + 1 < cBlocks)
+					do {std::this_thread::yield();} while (fence_2.load(std::memory_order_acquire) < cBlocks);
+				if (bool(pBuf))
+					std::memcpy(&m_points[buf_begin], pBuf.get(), std::size_t(iEnd - buf_begin) * sizeof(short));
+				if (fence_1.fetch_sub(1, std::memory_order_acq_rel) - 1 > 0)
+					do {std::this_thread::yield();} while (fence_1.load(std::memory_order_acquire) > 0);
+				for (auto iElement = iThread * cBlock; iElement < iEnd; ++iElement)
+					m_pVertexStatus[iElement] = this->is_empty_point_no_cache(iElement);
+			});
 		}
 		for (auto& thr:threads)
 			thr.join();
@@ -151,6 +154,104 @@ public:
 	inline point_t get_external_point(unsigned index) const
 	{
 		return {double(this->point_x(index)) * m_eColumnResolution, double(this->point_y(index)) * m_eRowResolution, double(point_z(index))};
+	}
+private:
+	bool is_empty_point_no_cache(unsigned point_index) const
+	{
+		auto col = this->point_x(point_index);
+		auto row = this->point_y(point_index);
+		if (col > 0 && col < this->columns() - 1 
+			&& row > 0 && row < this->rows() - 1
+			&& this->point_z(col, row) - this->point_z(col - 1, row) == this->point_z(col + 1, row) - this->point_z(col, row)
+			&& this->point_z(col, row) - this->point_z(col, row - 1) == this->point_z(col, row + 1) - this->point_z(col, row)
+			&& this->point_z(col, row - 1) - this->point_z(col - 1, row - 1) == this->point_z(col, row) - this->point_z(col - 1, row)
+			&& this->point_z(col, row + 1) - this->point_z(col - 1, row + 1) == this->point_z(col, row) - this->point_z(col - 1, row)
+			&& this->point_z(col + 1, row - 1) - this->point_z(col, row - 1) == this->point_z(col + 1, row) - this->point_z(col, row)
+			&& this->point_z(col + 1, row + 1) - this->point_z(col, row + 1) == this->point_z(col + 1, row) - this->point_z(col, row))
+		{
+			point_t v_tl = this->get_external_point(col - 1, row - 1);
+			point_t v_tp = this->get_external_point(col, row - 1);
+			point_t v_tr = this->get_external_point(col + 1, row - 1);
+			point_t v_lf = this->get_external_point(col - 1, row);
+			point_t v_md = this->get_external_point(col, row);
+			point_t v_rt = this->get_external_point(col + 1, row);
+			point_t v_bl = this->get_external_point(col - 1, row + 1);
+			point_t v_bt = this->get_external_point(col, row + 1);
+			point_t v_br = this->get_external_point(col + 1, row + 1);
+			point_t f_tl_lb[] = {v_tl, v_md, v_lf};
+			point_t f_tl_rt[] = {v_tl, v_tp, v_md};
+			point_t f_tr_lb[] = {v_tp, v_rt, v_md};
+			point_t f_tr_rt[] = {v_tp, v_tr, v_rt};
+			point_t f_bl_lb[] = {v_lf, v_bt, v_bl};
+			point_t f_bl_rt[] = {v_lf, v_md, v_bt};
+			point_t f_br_lb[] = {v_md, v_br, v_bt};
+			point_t f_br_rt[] = {v_md, v_rt, v_br};
+			return std::int8_t(SameDomainData(face_t(std::begin(f_tl_lb), std::end(f_tl_lb)), face_t(std::begin(f_tl_rt), std::end(f_tl_rt)))
+				&& SameDomainData(face_t(std::begin(f_tl_rt), std::end(f_tl_rt)), face_t(std::begin(f_tr_lb), std::end(f_tr_lb)))
+				&& SameDomainData(face_t(std::begin(f_tr_lb), std::end(f_tr_lb)), face_t(std::begin(f_tr_rt), std::end(f_tr_rt)))
+				&& SameDomainData(face_t(std::begin(f_tr_rt), std::end(f_tr_rt)), face_t(std::begin(f_bl_lb), std::end(f_bl_lb)))
+				&& SameDomainData(face_t(std::begin(f_bl_lb), std::end(f_bl_lb)), face_t(std::begin(f_bl_rt), std::end(f_bl_rt)))
+				&& SameDomainData(face_t(std::begin(f_bl_rt), std::end(f_bl_rt)), face_t(std::begin(f_br_lb), std::end(f_br_lb)))
+				&& SameDomainData(face_t(std::begin(f_br_lb), std::end(f_br_lb)), face_t(std::begin(f_br_rt), std::end(f_br_rt))));
+		}
+		return false;
+	}
+	inline short height_data_bswap(unsigned point_index) const
+	{
+		return bswap(m_points[point_index]);
+	}
+	short average_invalid_height(unsigned point_index) const
+	{
+		unsigned short cl, cr;
+		short vl = short(), vr = short();
+		unsigned short rt, rb;
+		short vt = short(), vb = short();
+		auto col = this->point_x(point_index);
+		auto row = this->point_y(point_index);
+		for (cr = col + 1; cr < this->columns(); ++cr)
+		{
+			if (m_points[point_index + cr - col] >= MIN_VALID_HGT_VALUE)
+			{
+				vr = m_points[point_index + cr - col];
+				break;
+			}
+		}
+		for (cl = 1; cl <= col; ++cl)
+		{
+			if (m_points[point_index - cl] >= MIN_VALID_HGT_VALUE)
+			{
+				cl = point_index - cl;
+				vl = m_points[cl];
+				break;
+			}
+		}
+
+		for (rb = row + 1; rb < this->rows(); ++rb)
+		{
+			if (this->point_z(col, rb) >= MIN_VALID_HGT_VALUE)
+			{
+				vb = this->point_z(col, rb);
+				break;
+			}
+		}
+		for (rt = 1; rt <= row; ++rt)
+		{
+			if (this->point_z(col, row - rt) >= MIN_VALID_HGT_VALUE)
+			{
+				rt = row - rt;
+				vt = this->point_z(col, rt);
+				break;
+			}
+		}
+		double eAve;
+		if (cr > cl)
+		{
+			eAve = double(vr - vl) / double(cr - cl) * (col - cl) + vl;
+			if (rb > rt)
+				return short((eAve + double(vb - vt) / double(rb - rt) * (row - rt) + vt) / 2);
+			return short(eAve);
+		}
+		return short(double(vb - vt) / double(rb - rt) * (row - rt) + vt);
 	}
 };
 
@@ -1212,7 +1313,7 @@ FaceSet parse_matrix(unsigned start_element /*= 0*/, unsigned end_element /*= g_
 
 static std::atomic_flag g_run = ATOMIC_FLAG_INIT;
 
-unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution)
+static unsigned convert_hgt_to_index_based_face(binary_ostream& os, short* pInput, unsigned short cColumns, unsigned short cRows, double eColumnResolution, double eRowResolution)
 {
 	std::list<std::future<FaceSet>> futures;
 	while (g_run.test_and_set(std::memory_order_acquire))
@@ -1249,7 +1350,34 @@ unsigned convert_hgt_to_index_based_face(binary_ostream& os, const short* pInput
 	return face_count;
 }
 
-#if CPP17_FILESYSTEM_SUPPORT
+
+
+//template <class Iterator>
+//void bswap_range(Iterator begin, Iterator end)
+//{
+//	for (auto it = begin; it != end; ++it)
+//		*it = bswap(*it);
+//}
+
+//static unsigned bswap_and_convert_hgt_to_index_based_face(binary_ostream& os, short* pInput, unsigned short cColumns, 
+//	unsigned short cRows, double eColumnResolution, double eRowResolution)
+//{
+//
+//	std::list<std::thread> threads;
+//	auto cBlocks = unsigned(std::thread::hardware_concurrency());
+//	auto cItemsTotal = unsigned(cColumns) * cRows;
+//	auto cBlock = (cItemsTotal + cBlocks - 1) / cBlocks;
+//	for (unsigned i = 0; i < cBlocks; ++i)
+//		threads.emplace_back([pInput, i, cBlock, cItemsTotal]() -> void
+//		{
+//			bswap_range(&pInput[i * cBlock], &pInput[std::min((i + 1) * cBlock, cItemsTotal)]);
+//		});
+//	for (auto& thr:threads)
+//		thr.join();
+//	return convert_hgt_to_index_based_face(os, pInput, cColumns, cRows, eColumnResolution, eRowResolution);
+//}
+
+#if FILESYSTEM_CPP17
 unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::filesystem::path output)
 {
 	auto os = binary_ofstream(output);
@@ -1277,7 +1405,7 @@ unsigned convert_hgt_to_index_based_face(std::filesystem::path input, std::files
 		throw std::invalid_argument("Unexpected HGT file size");
 	};
 }
-#endif //CPP17_FILESYSTEM_SUPPORT
+#endif //FILESYSTEM_CPP17
 
 struct conversion_result
 {
@@ -1317,7 +1445,7 @@ private:
 
 struct hgt_state
 {
-	void start(binary_ostream& os, const IDomainConverter& converter, unsigned points_to_process_at_start)
+	void start(binary_ostream& os, IDomainConverter& converter, unsigned points_to_process_at_start)
 	{
 		assert(m_pOs == nullptr && m_faces.empty() && process_land_face_ptr == nullptr && process_water_face_ptr == nullptr);
 		m_pOs = &os;
@@ -1330,7 +1458,6 @@ struct hgt_state
 		process_water_face_ptr = &hgt_state::write_water_face_and_poly_header_to_stream;
 		std::vector<face_t> stored_faces;
 		stored_faces.reserve(internal_set.size());
-		m_face_count = unsigned(internal_set.size());
 		for (auto& internal_face:internal_set)
 		{
 			for (auto pt:internal_face)
@@ -1356,11 +1483,14 @@ struct hgt_state
 			}
 		}
 		stored_faces.shrink_to_fit();
+		m_face_count_water = unsigned(stored_faces.size());
+		m_face_count_land = unsigned(internal_set.size()) - m_face_count_water;
 		m_faces.emplace_back(std::move(stored_faces));
 	}
 	void add_results(conversion_result&& res)
 	{
-		m_face_count += unsigned(res.land_faces().size());
+		m_face_count_land += CAMaaS::size_type(res.land_faces().size());
+		m_face_count_water += CAMaaS::size_type(res.water_faces().size());
 		for (auto& face:res.land_faces())
 			process_land_face(std::move(face));
 		res.land_faces().clear();
@@ -1372,22 +1502,19 @@ struct hgt_state
 	}
 	HGT_CONVERSION_STATS finalize()
 	{
-		if (m_face_count != 0)
+		if (m_face_count_land != 0)
 		{
 			m_pOs->seekp(m_face_count_pos);
-			*m_pOs << unsigned(m_face_count);
+			*m_pOs << CAMaaS::size_type(m_face_count_land);
 			m_pOs->seekp(0, std::ios_base::end);
 		}
-		for (auto& vWater:m_faces)
+		if (m_face_count_water != 0)
 		{
-			for (auto& face:vWater)
-				this->process_water_face(std::move(face));
-		}
-		if (m_face_count != 0)
-		{
-			m_pOs->seekp(m_face_count_pos);
-			*m_pOs << unsigned(m_face_count);
-			m_pOs->seekp(0, std::ios_base::end);
+			for (auto& vWater:m_faces)
+			{
+				for (auto& face:vWater)
+					this->process_water_face(std::move(face));
+			}
 		}
 		HGT_CONVERSION_STATS res{m_min_height, m_max_height, m_objects};
 		*this = hgt_state();
@@ -1395,10 +1522,11 @@ struct hgt_state
 	}
 private:
 	short m_min_height = std::numeric_limits<short>::max(), m_max_height = std::numeric_limits<short>::min();
-	unsigned m_objects = 0;
+	CAMaaS::size_type m_objects = 0;
 	binary_ostream* m_pOs = nullptr;
 	binary_ostream::pos_type m_face_count_pos = 0;
-	unsigned m_face_count = 0;
+	CAMaaS::size_type m_face_count_land = 0;
+	CAMaaS::size_type m_face_count_water = 0;
 	std::list<std::vector<face_t>> m_faces;
 	void (hgt_state::*process_land_face_ptr)(face_t&& face) = nullptr;
 	void (hgt_state::*process_water_face_ptr)(face_t&& face) = nullptr;
@@ -1422,10 +1550,12 @@ private:
 	inline void write_land_poly_header()
 	{
 		this->write_poly_header("HGT land", m_poly_land_domain_data);
+		*m_pOs << m_face_count_land;
 	}
 	void write_water_poly_header()
 	{
 		this->write_poly_header("HGT water", m_poly_water_domain_data);
+		*m_pOs << m_face_count_water;
 	}
 	void write_face_to_stream(face_t&& face, const domain_data_map& domain_data)
 	{
@@ -1473,17 +1603,25 @@ private:
 	}
 };
 
-static HGT_CONVERSION_STATS convert_hgt_to_external_poly_set(binary_ostream& os, const short* pInput, unsigned short cColumns, unsigned short cRows, 
-	double eColumnResolution, double eRowResolution, const IDomainConverter& converter)
+static HGT_CONVERSION_STATS convert_hgt_to_external_poly_set(binary_ostream& os, short* pInput, unsigned short cColumns, unsigned short cRows, 
+	double eColumnResolution, double eRowResolution, IDomainConverter& converter)
 {
+	auto cBlocks = unsigned(std::thread::hardware_concurrency());
+	auto cItemsTotal = unsigned(cColumns) * cRows;
+	auto cBlock = (cItemsTotal + cBlocks - 1) / cBlocks;
+	/*std::list<std::thread> init_threads;
+	for (unsigned i = 0; i < cBlocks; ++i)
+		init_threads.emplace_back([pInput, i, cBlock, cItemsTotal]() -> void
+		{
+			bswap_range(&pInput[i * cBlock], &pInput[std::min((i + 1) * cBlock, cItemsTotal)]);
+		});
+	for (auto& thr:init_threads)
+		thr.join();*/
+
 	std::list<std::future<conversion_result>> futures;
 	while (g_run.test_and_set(std::memory_order_acquire))
 		continue;
 	g_matrix = Matrix(pInput, cColumns, cRows, eColumnResolution, eRowResolution);
-	//auto cBlocks = unsigned(1);
-	auto cBlocks = unsigned(std::thread::hardware_concurrency());
-	auto cItemsTotal = unsigned(cColumns) * cRows;
-	auto cBlock = (cItemsTotal + cBlocks - 1) / cBlocks;
 	for (unsigned i = 1; i < cBlocks; ++i)
 		futures.emplace_back(std::async(std::launch::async, [i, cBlock, cItemsTotal]() -> auto
 		{
@@ -1529,7 +1667,7 @@ static HGT_CONVERSION_STATS convert_hgt_to_external_poly_set(binary_ostream& os,
 	return face_converter.finalize();
 }
 
-HGT_CONVERSION_STATS convert_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is_data, const IDomainConverter& converter, binary_ostream& os)
+HGT_CONVERSION_STATS convert_hgt(const HGT_RESOLUTION_DATA& resolution, std::istream& is_data, IDomainConverter& converter, binary_ostream& os)
 {
 	is_data.seekg(0, std::ios_base::end);
 	auto cb = is_data.tellg();

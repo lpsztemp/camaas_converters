@@ -273,7 +273,9 @@ static MediumDefinition LoadMediumData(text_istream& is, const xml::tag& opening
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"permittivity")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"permittivity")
 		{
 			medium.ePermittivity = xml::get_tag_value<double>(is, tag);
 			if (fPermittivity)
@@ -328,7 +330,9 @@ static ModelMediumDefinition LoadModelMediumData(text_istream& is, const xml::ta
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"refractionChange")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"refractionChange")
 		{
 			result.eRefractionChange = xml::get_tag_value<double>(is, tag);
 			if (fRefractionChange)
@@ -396,7 +400,9 @@ static ModelDomainData LoadModelDomainData(text_istream& is, const xml::tag& ope
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"frequency")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"frequency")
 					lstSpectrum.emplace_back(xml::get_tag_value<double>(is, tag));
 				else if (tag.name() == L"frequencySet")
 				{
@@ -421,7 +427,9 @@ static ModelDomainData LoadModelDomainData(text_istream& is, const xml::tag& ope
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"min")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"min")
 				{
 					if (fRangeMin)
 						throw ambiguous_specification(is.get_resource_locator(), L"min");
@@ -504,14 +512,18 @@ static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& o
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"frequency_response")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"frequency_response")
 		{
 			if (fFrequencyResponseSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), L"frequency_response");
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"expressionFrequencyResponse")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"expressionFrequencyResponse")
 				{
 					if (fFrequencyResponseSpecified)
 						throw ambiguous_specification(is.get_resource_locator(), L"frequency_response");
@@ -525,7 +537,9 @@ static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& o
 					while (true)
 					{
 						tag = xml::tag(is);
-						if (tag.name() == L"fr_row")
+						if (tag.is_comment())
+							continue;
+						else if (tag.name() == L"fr_row")
 						{
 							auto freq = tag.attribute(L"frequency");
 							if (freq.empty())
@@ -554,7 +568,9 @@ static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& o
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"expressionRadiationPattern")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"expressionRadiationPattern")
 				{
 					if (fRadiationPatternSpecified)
 						throw ambiguous_specification(is.get_resource_locator(), L"radiation_pattern");
@@ -568,7 +584,9 @@ static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& o
 					while (true)
 					{
 						tag = xml::tag(is);
-						if (tag.name() == L"rp_row")
+						if (tag.is_comment())
+							continue;
+						else if (tag.name() == L"rp_row")
 						{
 							auto freq = tag.attribute(L"frequency");
 							if (freq.empty())
@@ -608,7 +626,9 @@ static AntennaTypeDefinition LoadAntennaType(text_istream& is, const xml::tag& o
 			while (true)
 			{
 				tag = xml::tag(is);
-				if (tag.name() == L"magnitude")
+				if (tag.is_comment())
+					continue;
+				else if (tag.name() == L"magnitude")
 				{
 					if (fMagnitudeSpecified)
 						throw ambiguous_specification(is.get_resource_locator(), tag.name());
@@ -658,7 +678,7 @@ static binary_ostream& operator<<(binary_ostream& os, const AntennaTypeDefinitio
 	{
 		const auto& fr = dynamic_cast<const AntennaTypeDefinition::ExpressionFrequencyResponse&>(def.GetFrequencyResponse());
 		os << SourceDatumTypeId::ExpressionFrequencyResponse << std::uint32_t(fr.m_strExpr.size());
-		os.write(fr.m_strExpr);
+		os.write(fr.m_strExpr.data(), fr.m_strExpr.size());
 	}else if (typeid(def.GetFrequencyResponse()) == typeid(AntennaTypeDefinition::TableFrequencyResponse))
 	{
 		const auto& fr = dynamic_cast<const AntennaTypeDefinition::TableFrequencyResponse&>(def.GetFrequencyResponse());
@@ -671,7 +691,7 @@ static binary_ostream& operator<<(binary_ostream& os, const AntennaTypeDefinitio
 	{
 		const auto& rp = dynamic_cast<const AntennaTypeDefinition::ExpressionRadiationPattern&>(def.GetRadiationPattern());
 		os << SourceDatumTypeId::ExpressionRadiationPattern << std::uint32_t(rp.m_strExpr.size());
-		os.write(rp.m_strExpr);
+		os.write(rp.m_strExpr.data(), rp.m_strExpr.size());
 	}else if (typeid(def.GetRadiationPattern()) == typeid(AntennaTypeDefinition::TableRadiationPattern))
 	{
 		using std::get;
@@ -692,7 +712,9 @@ static AntennaDefinition LoadAntenna(text_istream& is, const xml::tag& opening_t
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"antenna_type")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"antenna_type")
 		{
 			if (fAntennaTypeSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
@@ -720,7 +742,9 @@ static SourceDomainDataDefinition LoadSourceDomainData(text_istream& is, const x
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"antenna")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"antenna")
 		{
 			if (fAntennaSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());
@@ -756,7 +780,9 @@ static PolyDomainDataDefinition LoadPolyDomainData(text_istream& is, const xml::
 	while (true)
 	{
 		auto tag = xml::tag(is);
-		if (tag.name() == L"medium")
+		if (tag.is_comment())
+			continue;
+		else if (tag.name() == L"medium")
 		{
 			if (fMediumSpecified)
 				throw ambiguous_specification(is.get_resource_locator(), tag.name());

@@ -231,7 +231,9 @@ private:
 		{
 			xml::tag tag;
 			while ((tag = xml::tag(is)).is_comment()) continue;
-			if (tag.name() == L"domain")
+			if (tag.is_comment())
+				continue;
+			else if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -274,7 +276,9 @@ private:
 		while (true)
 		{
 			auto tag = xml::tag(is);
-			if (tag.name() == L"domain")
+			if (tag.is_comment())
+				continue;
+			else if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -304,7 +308,9 @@ private:
 		while (true)
 		{
 			auto tag = xml::tag(is);
-			if (tag.name() == L"domain")
+			if (tag.is_comment())
+				continue;
+			else if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -377,7 +383,9 @@ private:
 		while (true)
 		{
 			auto tag = xml::tag(is);
-			if (tag.name() == L"domain")
+			if (tag.is_comment())
+				continue;
+			else if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -476,7 +484,9 @@ private:
 		while (true)
 		{
 			auto tag = xml::tag(is);
-			if (tag.name() == L"domain")
+			if (tag.is_comment())
+				continue;
+			else if (tag.name() == L"domain")
 			{
 				if (tag.is_closing_tag() || tag.is_unary_tag())
 					throw improper_xml_tag(is.get_resource_locator(), tag.name());
@@ -619,10 +629,7 @@ private:
 	}
 	std::size_t poly_count() const
 	{
-		auto cPoly = m_polyNamedMap.size() + m_polyUnnamedList.size();
-		if (m_pHgt != nullptr)
-			++cPoly;
-		return cPoly;
+		return m_polyNamedMap.size() + m_polyUnnamedList.size();
 	}
 	std::size_t source_count() const
 	{
